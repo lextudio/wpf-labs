@@ -1,5 +1,7 @@
 using System.IO;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -60,6 +62,47 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
 
             return TryInvokeOnElement(target);
         }).Task ?? Task.FromResult(false);
+    }
+
+    protected override Task<bool> TryScrollAsync(string elementId, double deltaX, double deltaY)
+    {
+        return Application.Current?.Dispatcher.InvokeAsync(() =>
+        {
+            var element = _treeWalker.FindElementById(elementId);
+            if (element == null) return false;
+
+            var target = _treeWalker.ResolveElementByStableId(element.Id);
+            if (target is null) return false;
+
+            var scrollViewer = FindScrollViewer(target);
+            if (scrollViewer == null)
+                return false;
+
+            if (deltaX != 0)
+                scrollViewer.ScrollToHorizontalOffset(Math.Max(0, scrollViewer.HorizontalOffset + deltaX));
+
+            if (deltaY != 0)
+                scrollViewer.ScrollToVerticalOffset(Math.Max(0, scrollViewer.VerticalOffset + deltaY));
+
+            return true;
+        }).Task ?? Task.FromResult(false);
+    }
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject element)
+    {
+        if (element is ScrollViewer sv)
+            return sv;
+
+        var current = element;
+        while (current != null)
+        {
+            if (current is ScrollViewer found)
+                return found;
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return null;
     }
 
     private bool TryInvokeOnElement(DependencyObject target)

@@ -1,0 +1,33 @@
+<Project Sdk="Uno.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net10.0-desktop</TargetFrameworks>
+
+    <OutputType>Exe</OutputType>
+    <UnoSingleProject>true</UnoSingleProject>
+
+    <!-- Display name -->
+    <ApplicationTitle>UnoDevFlowTestApp</ApplicationTitle>
+    <!-- App Identifier -->
+    <ApplicationId>com.companyname.unodevflowtestapp</ApplicationId>
+    <!-- Versions -->
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <!-- Package Publisher -->
+    <ApplicationPublisher>UnoDevFlowTestApp</ApplicationPublisher>
+    <!-- Package Description -->
+    <Description>UnoDevFlowTestApp powered by Uno Platform.</Description>
+
+    <!--
+      UnoFeatures are used to quickly add and manage features enabled for your app.
+      https://aka.platform.uno/singleproject-features
+    -->
+    <UnoFeatures>
+      SkiaRenderer;
+    </UnoFeatures>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\LeXtudio.Uno.DevFlow.Agent.Uno\LeXtudio.Uno.DevFlow.Agent.Uno.csproj" />
+    <ProjectReference Include="..\..\..\..\external\maui-labs\src\DevFlow\Microsoft.Maui.DevFlow.Logging\Microsoft.Maui.DevFlow.Logging.csproj" />
+  </ItemGroup>
+</Project>

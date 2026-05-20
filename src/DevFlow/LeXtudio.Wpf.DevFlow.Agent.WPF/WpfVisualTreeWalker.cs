@@ -89,6 +89,7 @@ public class WpfVisualTreeWalker : IVisualTreeWalker
             IsEnabled = GetIsEnabled(element),
             Bounds = ResolveBounds(element),
             NativeProperties = BuildNativeProperties(element, id),
+            FrameworkProperties = BuildFrameworkProperties(element),
             Children = GetChildren(element).Select(child => BuildElementInfo(child, id)).ToList()
         };
 
@@ -207,6 +208,21 @@ public class WpfVisualTreeWalker : IVisualTreeWalker
         }
 
         return props;
+    }
+
+    private static Dictionary<string, string?>? BuildFrameworkProperties(DependencyObject element)
+    {
+        var props = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+        if (element is ScrollViewer scroll)
+        {
+            props["horizontalOffset"] = scroll.HorizontalOffset.ToString();
+            props["verticalOffset"] = scroll.VerticalOffset.ToString();
+            props["extentWidth"] = scroll.ExtentWidth.ToString();
+            props["extentHeight"] = scroll.ExtentHeight.ToString();
+        }
+
+        return props.Count > 0 ? props : null;
     }
 
     private static IEnumerable<DependencyObject> GetChildren(DependencyObject element)

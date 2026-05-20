@@ -46,6 +46,12 @@ public partial class App : Application
 }
 ```
 
+## Uno support preview
+
+- `LeXtudio.Uno.DevFlow.Agent.Uno` is scaffolded as the initial Uno DevFlow platform package.
+- `UnoDevFlow.sln` contains the shared agent core plus the new Uno project.
+- The Uno package currently has skeleton tree-walking and registration helpers so Uno-specific work can be added in place.
+
 ## Notes
 
 - The WPF DevFlow product is intentionally focused on classic WPF, not MAUI.

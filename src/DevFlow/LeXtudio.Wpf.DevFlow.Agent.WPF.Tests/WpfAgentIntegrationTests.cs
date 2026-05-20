@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Maui.DevFlow.Agent.Core;
@@ -60,6 +61,53 @@ public class WpfAgentIntegrationTests
 
         Assert.False(string.IsNullOrWhiteSpace(text));
         Assert.Contains("Button clicked at", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ScrollViewer_UpdatesVerticalOffset()
+    {
+        var port = GetFreePort();
+        await using var host = await StartWpfAgentHostAsync(port);
+
+        using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+        await PollAgentStatusAsync(client, TimeSpan.FromSeconds(15));
+
+        using var scrollResponse = await client.PostAsync(
+            "/api/v1/ui/actions/scroll",
+            new StringContent("{ \"id\": \"MainScrollViewer\", \"deltaY\": 150 }", Encoding.UTF8, "application/json"));
+        scrollResponse.EnsureSuccessStatusCode();
+
+        using var elementResponse = await client.GetAsync("/api/v1/ui/element?id=MainScrollViewer");
+        elementResponse.EnsureSuccessStatusCode();
+        using var elementDoc = JsonDocument.Parse(await elementResponse.Content.ReadAsStreamAsync());
+        var offset = elementDoc.RootElement
+            .GetProperty("frameworkProperties")
+            .GetProperty("verticalOffset")
+            .GetString();
+
+        Assert.True(double.TryParse(offset, out var offsetValue) && offsetValue > 0);
+    }
+
+    [Fact]
+    public async Task ScrollTargetText_IsPresentAfterScroll()
+    {
+        var port = GetFreePort();
+        await using var host = await StartWpfAgentHostAsync(port);
+
+        using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+        await PollAgentStatusAsync(client, TimeSpan.FromSeconds(15));
+
+        using var scrollResponse = await client.PostAsync(
+            "/api/v1/ui/actions/scroll",
+            new StringContent("{ \"id\": \"MainScrollViewer\", \"deltaY\": 150 }", Encoding.UTF8, "application/json"));
+        scrollResponse.EnsureSuccessStatusCode();
+
+        using var targetResponse = await client.GetAsync("/api/v1/ui/element?id=ScrollTargetText");
+        targetResponse.EnsureSuccessStatusCode();
+        using var targetDoc = JsonDocument.Parse(await targetResponse.Content.ReadAsStreamAsync());
+        var text = targetDoc.RootElement.GetProperty("text").GetString();
+
+        Assert.Equal("Scroll target is here!", text);
     }
 
     private static async Task<JsonElement> PollAgentStatusAsync(HttpClient client, TimeSpan timeout)

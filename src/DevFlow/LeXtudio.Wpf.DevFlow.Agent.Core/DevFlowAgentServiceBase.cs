@@ -36,6 +36,7 @@ public abstract class DevFlowAgentServiceBase : IDisposable
     protected abstract Task<ElementInfo?> FindElementAsync(string id);
     protected abstract Task<byte[]?> CaptureScreenshotAsync();
     protected abstract Task<bool> TryTapAsync(string elementId);
+    protected abstract Task<bool> TryScrollAsync(string elementId, double deltaX, double deltaY);
     protected abstract Task<string?> GetApplicationNameAsync();
 
     private void RegisterRoutes()
@@ -45,6 +46,7 @@ public abstract class DevFlowAgentServiceBase : IDisposable
         _server.MapGet("/api/v1/ui/element", HandleElementAsync);
         _server.MapGet("/api/v1/ui/screenshot", HandleScreenshotAsync);
         _server.MapPost("/api/v1/ui/tap", HandleTapAsync);
+        _server.MapPost("/api/v1/ui/actions/scroll", HandleScrollAsync);
     }
 
     private async Task<HttpResponse> HandleStatusAsync(HttpRequest request)
@@ -93,9 +95,26 @@ public abstract class DevFlowAgentServiceBase : IDisposable
         return result ? HttpResponse.Ok() : HttpResponse.Error($"Tap target '{payload.Id}' could not be activated", 404);
     }
 
+    private async Task<HttpResponse> HandleScrollAsync(HttpRequest request)
+    {
+        var payload = request.BodyAs<ScrollRequest>();
+        if (payload == null || string.IsNullOrWhiteSpace(payload.Id))
+            return HttpResponse.Error("Request must include a JSON body with an 'id' field", 400);
+
+        var result = await TryScrollAsync(payload.Id, payload.DeltaX, payload.DeltaY).ConfigureAwait(false);
+        return result ? HttpResponse.Ok() : HttpResponse.Error($"Scroll target '{payload.Id}' could not be scrolled", 404);
+    }
+
     private sealed class TapRequest
     {
         public string? Id { get; set; }
+    }
+
+    private sealed class ScrollRequest
+    {
+        public string? Id { get; set; }
+        public double DeltaX { get; set; }
+        public double DeltaY { get; set; }
     }
 
     public void Dispose()

@@ -6,11 +6,25 @@
         Height="320"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="16">
-        <StackPanel>
-            <TextBlock Text="WPF DevFlow Sample App" FontSize="24" FontWeight="Bold" Margin="0,0,0,12" />
-            <TextBlock Text="This app is instrumented with DevFlow on port 5500." TextWrapping="Wrap" Margin="0,0,0,12" />
-            <Button Name="ActionButton" Width="180" Height="40" Content="Tap Me" Click="ActionButton_Click" Margin="0,0,0,12" />
-            <TextBlock Name="ResponseText" Text="Press the button or call DevFlow endpoints." TextWrapping="Wrap" />
-        </StackPanel>
+        <ScrollViewer Name="MainScrollViewer" AutomationProperties.AutomationId="MainScrollViewer">
+            <StackPanel>
+                <TextBlock Text="WPF DevFlow Sample App" FontSize="24" FontWeight="Bold" Margin="0,0,0,12" />
+                <TextBlock Text="This app is instrumented with DevFlow on port 5500." TextWrapping="Wrap" Margin="0,0,0,12" />
+                <Button Name="ActionButton" AutomationProperties.AutomationId="ActionButton" Width="180" Height="40" Content="Tap Me" Click="ActionButton_Click" Margin="0,0,0,12" />
+                <TextBlock Name="ResponseText" AutomationProperties.AutomationId="ResponseText" Text="Press the button or call DevFlow endpoints." TextWrapping="Wrap" Margin="0,0,0,12" />
+
+                <TextBlock Text="Scroll to see the hidden footer content." FontWeight="SemiBold" Margin="0,0,0,12" />
+                <TextBlock Text="This content is intentionally long to force vertical scrolling in the sample app." TextWrapping="Wrap" Margin="0,0,0,12" />
+                <TextBlock Text="Keep scrolling..." />
+                <TextBlock Text="Keep scrolling..." />
+                <TextBlock Text="Keep scrolling..." />
+                <TextBlock Text="Keep scrolling..." />
+                <TextBlock Text="Keep scrolling..." />
+                <TextBlock Text="Keep scrolling..." />
+                <TextBlock Text="Keep scrolling..." />
+                <TextBlock Text="Keep scrolling..." />
+                <TextBlock Name="ScrollTargetText" AutomationProperties.AutomationId="ScrollTargetText" Text="Scroll target is here!" FontWeight="Bold" Margin="0,12,0,0" />
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>
