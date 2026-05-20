@@ -2,14 +2,22 @@
 
 This workspace contains the WPF DevFlow proof-of-concept and supporting tooling for the WPF tooling research project.
 
+## NuGet
+
+[![LeXtudio.DevFlow.Agent.Core](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.Core.svg)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Core)
+[![LeXtudio.DevFlow.Agent.WPF](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.WPF.svg)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.WPF)
+[![LeXtudio.DevFlow.Agent.Uno](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.Uno.svg)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Uno)
+[![LeXtudio.DevFlow.Driver](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Driver.svg)](https://www.nuget.org/packages/LeXtudio.DevFlow.Driver)
+[![LeXtudio.Wpf.Cli](https://img.shields.io/nuget/v/LeXtudio.Wpf.Cli.svg)](https://www.nuget.org/packages/LeXtudio.Wpf.Cli)
+
 ## Workspace structure
 
 - `src/DevFlow/`
-  - `Microsoft.Wpf.DevFlow.Agent.Core/` — shared DevFlow core service layer.
-  - `Microsoft.Wpf.DevFlow.Agent.WPF/` — plain WPF runtime implementation for DevFlow.
-  - `Microsoft.Wpf.DevFlow.Agent.WPF.Tests/` — integration tests covering DevFlow status, tree, screenshot, and tap behavior.
+  - `LeXtudio.DevFlow.Agent.Core/` — shared DevFlow core service layer.
+  - `LeXtudio.DevFlow.Agent.WPF/` — plain WPF runtime implementation for DevFlow.
+  - `LeXtudio.DevFlow.Agent.WPF.Tests/` — integration tests covering DevFlow status, tree, screenshot, and tap behavior.
   - `WpfDevFlowTestApp/` — a small WPF sample app instrumented with DevFlow for runtime validation.
-- `src/Cli/` — WPF CLI prototype for scaffolding and project workflows.
+- `src/Cli/` — `LeXtudio.Wpf.Cli` global tool prototype for scaffolding and project workflows.
 - `docs/devflow/` — plan and session documentation for the DevFlow work.
 
 ## Key goals
@@ -18,7 +26,7 @@ This workspace contains the WPF DevFlow proof-of-concept and supporting tooling 
 - Reuse shared DevFlow infrastructure where it makes sense, while keeping the runtime WPF-only.
 - Validate the approach with an end-to-end integration test and a live sample app.
 
-## How to run
+## How to use with WPF/WinUI 3/Uno Platform
 
 ### Build all relevant projects
 
@@ -27,11 +35,11 @@ cd src\DevFlow
 dotnet build WpfDevFlow.sln
 ```
 
-### Run the sample app
+### Run the WPF sample app
 
 ```powershell
 cd src\DevFlow\WpfDevFlowTestApp
-dotnet run
+dotnet run --no-build
 ```
 
 The sample app starts DevFlow on port `5500` and exposes:
@@ -42,16 +50,69 @@ The sample app starts DevFlow on port `5500` and exposes:
 - `GET http://localhost:5500/api/v1/ui/screenshot`
 - `POST http://localhost:5500/api/v1/ui/tap`
 
-### Run integration tests
+### Run the WinUI 3/Uno Platform sample app
 
 ```powershell
-cd src\DevFlow\Microsoft.Wpf.DevFlow.Agent.WPF.Tests
+cd src\DevFlow\UnoDevFlowTestApp
+dotnet run -f net10.0-desktop --no-build
+```
+
+This launches the sample app on Uno Platform and it starts DevFlow on port `5500` and exposes:
+
+- `GET http://localhost:5500/api/v1/agent/status`
+- `GET http://localhost:5500/api/v1/ui/tree`
+- `GET http://localhost:5500/api/v1/ui/element?id=<id>`
+- `GET http://localhost:5500/api/v1/ui/screenshot`
+- `POST http://localhost:5500/api/v1/ui/tap`
+
+To launch the sample app on WinUI 3,
+
+```powershell
+cd src\DevFlow\UnoDevFlowTestApp
+dotnet run -f net10.0-windows10.0.19041.0 --no-build
+```
+
+### Run WPF integration tests
+
+```powershell
+cd src\DevFlow\LeXtudio.DevFlow.Agent.WPF.Tests
 dotnet test
+```
+
+### Run WinUI 3/Uno Platform integration tests
+
+```powershell
+cd src\DevFlow\LeXtudio.DevFlow.Agent.Uno.Tests
+dotnet test
+```
+## Use in your projects
+
+You can use prebuilt NuGet packages
+
+### Install packages to a WPF project
+
+```powershell
+dotnet add package LeXtudio.DevFlow.Agent.WPF
+dotnet add package LeXtudio.DevFlow.Driver
+```
+
+### Install packages to a WinUI 3/Uno Platform project
+
+```powershell
+dotnet add package LeXtudio.DevFlow.Agent.Uno
+dotnet add package LeXtudio.DevFlow.Driver
+```
+
+### Install WPF CLI tool
+
+```powershell
+dotnet tool install -g LeXtudio.Wpf.Cli
+dotnet wpflex --help
 ```
 
 ## Notes
 
-- The WPF DevFlow agent is intentionally lightweight and focused on WPF runtime automation.
+- The DevFlow agent is intentionally lightweight and focused on WPF/WinUI 3/Uno Platform runtime automation.
 - The host app and test app demonstrate live UI tree inspection, screenshot capture, and tap interaction.
 - Documentation for the DevFlow plan is available under `docs/devflow/`.
 

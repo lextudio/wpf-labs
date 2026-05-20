@@ -6,7 +6,7 @@ Param(
         "src\DevFlow\LeXtudio.DevFlow.Agent.WPF\LeXtudio.DevFlow.Agent.WPF.csproj",
         "src\DevFlow\LeXtudio.DevFlow.Agent.Uno\LeXtudio.DevFlow.Agent.Uno.csproj",
         "src\DevFlow\LeXtudio.DevFlow.Driver\LeXtudio.DevFlow.Driver.csproj",
-        "src\Cli\src\LeXtudio.DevFlow.Cli\LeXtudio.DevFlow.Cli.csproj"
+        "src\Cli\src\LeXtudio.Wpf.Cli\LeXtudio.Wpf.Cli.csproj"
     )
 )
 

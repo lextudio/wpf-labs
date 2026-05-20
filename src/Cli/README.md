@@ -1,4 +1,4 @@
-# LeXtudio.DevFlow.Cli
+# LeXtudio WPF CLI
 
 A command-line tool for WPF development environment validation, project workflows, packaging, and diagnostics.
 
@@ -6,52 +6,55 @@ A command-line tool for WPF development environment validation, project workflow
 
 ## Package
 
+[![LeXtudio.Wpf.Cli](https://img.shields.io/nuget/v/LeXtudio.Wpf.Cli.svg)](https://www.nuget.org/packages/LeXtudio.Wpf.Cli)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/LeXtudio.Wpf.Cli.svg)](https://www.nuget.org/packages/LeXtudio.Wpf.Cli)
+
 | Package | Description |
 |---------|-------------|
-| **LeXtudio.DevFlow.Cli** | Global CLI tool (`wpf`) for WPF project workflows, diagnostics, and packaging. |
+| **LeXtudio.Wpf.Cli** | Global CLI tool (`dotnet wpflex`) for WPF project workflows, diagnostics, and packaging. |
 
 ## Quick Start
 
 ### 1. Install the CLI tool
 
 ```powershell
-dotnet tool install -g LeXtudio.DevFlow.Cli
+dotnet tool install -g LeXtudio.Wpf.Cli
 ```
 
 ### 2. Check your environment
 
 ```powershell
-wpf doctor
+dotnet wpflex doctor
 ```
 
 ### 3. Create a new WPF project
 
 ```powershell
-wpf new app --name MyWpfApp --framework net8.0-windows
+dotnet wpflex new app --name MyWpfApp --framework net8.0-windows
 ```
 
 ### 4. Build and run
 
 ```powershell
-wpf build
-wpf run
+dotnet wpflex build
+dotnet wpflex run
 ```
 
 ## Core Commands
 
 | Command | Description |
 |---------|-------------|
-| `wpf doctor` | Validate the WPF development environment and surface missing toolchain components. |
-| `wpf version` | Display CLI and environment version information. |
-| `wpf new` | Scaffold a new WPF app or library from templates. |
-| `wpf build` | Build a WPF project with WPF-aware defaults. |
-| `wpf run` | Run a WPF application. |
-| `wpf publish` | Publish a WPF application for deployment. |
-| `wpf package` | Package WPF outputs, including MSIX or self-contained bundles. |
-| `wpf diagnostics` | Run WPF-specific diagnostics and validation checks. |
-| `wpf env` | Inspect installed SDKs, tooling, and Windows environment status. |
+| `dotnet wpflex doctor` | Validate the WPF development environment and surface missing toolchain components. |
+| `dotnet wpflex version` | Display CLI and environment version information. |
+| `dotnet wpflex new` | Scaffold a new WPF app or library from templates. |
+| `dotnet wpflex build` | Build a WPF project with WPF-aware defaults. |
+| `dotnet wpflex run` | Run a WPF application. |
+| `dotnet wpflex publish` | Publish a WPF application for deployment. |
+| `dotnet wpflex package` | Package WPF outputs, including MSIX or self-contained bundles. |
+| `dotnet wpflex diagnostics` | Run WPF-specific diagnostics and validation checks. |
+| `dotnet wpflex env` | Inspect installed SDKs, tooling, and Windows environment status. |
 
-Run `wpf <command> --help` for detailed options on any command.
+Run `dotnet wpflex <command> --help` for detailed options on any command.
 
 ## Output and Automation
 

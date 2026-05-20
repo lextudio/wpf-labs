@@ -7,5 +7,11 @@
     <IsPackable>true</IsPackable>
     <Description>Driver library for connecting to WPF DevFlow agents and automating WPF application inspection.</Description>
     <PackageTags>wpf;devflow;driver;automation</PackageTags>
+    <PackageIcon>company_logo_512.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\..\images\company_logo_512.png" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="..\README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
 </Project>
