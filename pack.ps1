@@ -155,9 +155,13 @@ function Test-Package([string]$PackagePath) {
     try {
         [IO.Compression.ZipFile]::ExtractToDirectory($PackagePath, $extractRoot)
 
-        $dlls = Get-ChildItem -Path (Join-Path $extractRoot "lib") -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue
+        $dlls = @(
+            Get-ChildItem -Path (Join-Path $extractRoot "lib") -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue
+        )
         if (-not $dlls -or $dlls.Count -eq 0) {
-            $toolDlls = Get-ChildItem -Path (Join-Path $extractRoot "tools") -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue
+            $toolDlls = @(
+                Get-ChildItem -Path (Join-Path $extractRoot "tools") -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue
+            )
             if (-not $toolDlls -or $toolDlls.Count -eq 0) {
                 throw "Package '$PackagePath' does not contain library or tool DLL assets."
             }
