@@ -2,7 +2,7 @@
 
 ## Vision
 
-`LeXtudio.DevFlow.Cli` should be the command-line companion for WPF developers on Windows. It should make tooling setup, project workflows, diagnostics, and packaging easier by providing a single, consistent CLI surface modeled after the MAUI CLI experience.
+`LeXtudio.Wpf.Cli` should be the command-line companion for WPF developers on Windows. It should make tooling setup, project workflows, diagnostics, packaging, and DevFlow agent checks easier by providing a single, consistent CLI surface modeled after the MAUI CLI experience.
 
 ## Design Goals
 
@@ -16,61 +16,65 @@
 
 ### Primary commands
 
-- `wpf doctor`
+- `dotnet wpflex doctor`
   - Validate the installed Windows developer toolchain
   - Detect `.NET SDK`, `Windows SDK`, `MSBuild`, Visual Studio / Build Tools, and WPF targeting support
   - Report missing dependencies and provide autofix guidance where available
 
-- `wpf version`
+- `dotnet wpflex version`
   - Show CLI version and relevant runtime/tool versions
   - Print installed SDKs and supported target frameworks
 
-- `wpf new`
+- `dotnet wpflex new`
   - Scaffold new WPF apps and libraries
   - Example templates:
     - `app`
     - `library`
     - `mvvm`
   - Example usage:
-    - `wpf new app --name MyApp --framework net8.0-windows`
+    - `dotnet wpflex new app --name MyApp --framework net8.0-windows`
 
-- `wpf build`
+- `dotnet wpflex build`
   - Build the current WPF project or specified `.csproj`
   - Provide WPF-aware defaults and diagnostics
 
-- `wpf run`
+- `dotnet wpflex run`
   - Run a WPF app from the current project
   - Support `--no-build`, `--configuration`, and `--framework`
 
-- `wpf publish`
+- `dotnet wpflex publish`
   - Publish a WPF app for deployment
   - Support self-contained publish, single-file, and trimmed binaries
   - Optionally support MSIX packaging helper flows
 
-- `wpf package`
+- `dotnet wpflex package`
   - Package output artifacts into installer or MSIX bundles
   - Validate required metadata and certificate information
 
-- `wpf diagnostics`
+- `dotnet wpflex diagnostics`
   - Run WPF-specific sanity checks
   - Example subcommands:
-    - `wpf diagnostics xaml`
-    - `wpf diagnostics project`
-    - `wpf diagnostics manifest`
+    - `dotnet wpflex diagnostics xaml`
+    - `dotnet wpflex diagnostics project`
+    - `dotnet wpflex diagnostics manifest`
 
-- `wpf env`
+- `dotnet wpflex env`
   - Inspect installed SDKs, tooling versions, and Windows environment details
-  - Example: `wpf env list`, `wpf env check`
+  - Example: `dotnet wpflex env list`, `dotnet wpflex env check`
+
+- `dotnet wpflex devflow`
+  - Query a running WPF DevFlow agent
+  - Current implementation: `dotnet wpflex devflow status [--host <host>] [--port <port>]`
 
 ## Proposed Future Commands
 
-- `wpf trace`
+- `dotnet wpflex trace`
   - Collect runtime trace data for WPF applications using ETW or `dotnet trace`
 
-- `wpf inspect`
+- `dotnet wpflex inspect`
   - Inspect runtime UI state or application manifest information
 
-- `wpf doctor fix`
+- `dotnet wpflex doctor fix`
   - Attempt autofixes for common environment issues
 
 ## Output Model
@@ -94,7 +98,7 @@ For machine-consumable failure scenarios, the CLI should emit a structured error
 
 - `Commands`
   - Each command maps to a class and/or handler
-  - Supports nested groups like `wpf diagnostics xaml`
+  - Supports nested groups like `dotnet wpflex diagnostics xaml`
 
 - `Providers`
   - Abstract Windows-specific services such as SDK discovery, VS/MSBuild discovery, and package validation
@@ -119,8 +123,8 @@ A recommended folder layout:
 - `wpf-cli/`
   - `README.md`
   - `DESIGN.md`
-  - `src/LeXtudio.DevFlow.Cli/`
-  - `src/LeXtudio.DevFlow.Cli.UnitTests/`
+  - `src/LeXtudio.Wpf.Cli/`
+  - `src/LeXtudio.Wpf.Cli.UnitTests/`
   - `templates/`
   - `docs/`
   - `wpf-cli.slnf`
@@ -129,26 +133,27 @@ A recommended folder layout:
 
 ### Phase 1
 
-- `wpf doctor`
-- `wpf version`
-- `wpf new`
-- `wpf build`
-- `wpf run`
-- `wpf publish`
-- `wpf env check`
+- `dotnet wpflex doctor`
+- `dotnet wpflex version`
+- `dotnet wpflex new`
+- `dotnet wpflex build`
+- `dotnet wpflex run`
+- `dotnet wpflex publish`
+- `dotnet wpflex env check`
+- `dotnet wpflex devflow status`
 - JSON output support
 - Basic Windows toolchain detection
 
 ### Phase 2
 
-- `wpf diagnostics`
-- `wpf package msix`
-- improved `wpf new` templates
+- `dotnet wpflex diagnostics`
+- `dotnet wpflex package msix`
+- improved `dotnet wpflex new` templates
 - better project resolution and multi-target support
 
 ### Phase 3
 
-- `wpf trace`
+- `dotnet wpflex trace`
 - runtime inspection helpers
 - diagnostics rule library
 - more packaging scenarios

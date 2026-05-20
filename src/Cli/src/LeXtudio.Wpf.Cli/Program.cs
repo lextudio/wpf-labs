@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace LeXtudio.DevFlow.Cli
+namespace LeXtudio.Wpf.Cli
 {
     public static class Program
     {
@@ -91,15 +91,15 @@ namespace LeXtudio.DevFlow.Cli
         private static int UnknownCommand(string command)
         {
             Console.Error.WriteLine($"Unknown command: {command}");
-            Console.Error.WriteLine("Run 'wpflex --help' for available commands.");
+            Console.Error.WriteLine("Run 'dotnet wpflex --help' for available commands.");
             return 1;
         }
 
         private static void ShowHelp()
         {
-            Console.WriteLine("LeXtudio.DevFlow.Cli - WPF command line utility");
+            Console.WriteLine("LeXtudio.Wpf.Cli - WPF command line utility");
             Console.WriteLine();
-            Console.WriteLine("Usage: wpflex [options] <command> [command-options]");
+            Console.WriteLine("Usage: dotnet wpflex [options] <command> [command-options]");
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine("  --json      Emit structured JSON output");

@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using Xunit;
 
-namespace LeXtudio.DevFlow.Cli.UnitTests
+namespace LeXtudio.Wpf.Cli.UnitTests
 {
     public class CliEntryTests
     {
@@ -10,7 +10,7 @@ namespace LeXtudio.DevFlow.Cli.UnitTests
         public void NoArguments_ShowsHelp()
         {
             var output = CaptureConsole(() => Program.Main(Array.Empty<string>()));
-            Assert.Contains("LeXtudio.DevFlow.Cli - WPF command line utility", output);
+            Assert.Contains("LeXtudio.Wpf.Cli - WPF command line utility", output);
         }
 
         [Fact]

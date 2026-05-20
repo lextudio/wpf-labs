@@ -7,14 +7,14 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace LeXtudio.DevFlow.Cli.UnitTests
+namespace LeXtudio.Wpf.Cli.UnitTests
 {
     public class DevFlowTemporaryProjectTests
     {
         [Fact]
         public async Task TemporaryWpfProjectBuildsAndExposesDevFlowAgent()
         {
-            var tempRoot = Path.Combine(Path.GetTempPath(), "LeXtudio.DevFlow.Cli.DevFlowValidate", Guid.NewGuid().ToString("N"));
+            var tempRoot = Path.Combine(Path.GetTempPath(), "LeXtudio.Wpf.Cli.DevFlowValidate", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempRoot);
 
             try

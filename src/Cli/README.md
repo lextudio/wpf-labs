@@ -56,6 +56,31 @@ dotnet wpflex run
 
 Run `dotnet wpflex <command> --help` for detailed options on any command.
 
+## DevFlow Commands
+
+The CLI can query a running WPF DevFlow agent.
+
+```powershell
+dotnet wpflex devflow status --host localhost --port 5500
+```
+
+Use `--json` when scripting:
+
+```powershell
+dotnet wpflex --json devflow status
+```
+
+Runtime UI actions such as tap and scroll are currently exposed by the DevFlow Web API rather than dedicated CLI subcommands.
+
+| Request | Description |
+|---------|-------------|
+| `GET /api/v1/agent/status` | Read agent status. |
+| `GET /api/v1/ui/tree` | Read the live UI tree. |
+| `GET /api/v1/ui/element?id=<id>` | Read one UI element by id. |
+| `GET /api/v1/ui/screenshot` | Capture a screenshot. |
+| `POST /api/v1/ui/tap` | Tap an element with body `{ "id": "<element-id>" }`. |
+| `POST /api/v1/ui/actions/scroll` | Scroll an element with body `{ "id": "<element-id>", "deltaX": 0, "deltaY": 600 }`. |
+
 ## Output and Automation
 
 The WPF CLI should support a human-friendly interactive console experience by default and a machine-readable JSON mode using `--json` for automation.

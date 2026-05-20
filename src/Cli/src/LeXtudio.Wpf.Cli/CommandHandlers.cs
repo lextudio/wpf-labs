@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using LeXtudio.DevFlow.Driver;
 
-namespace LeXtudio.DevFlow.Cli
+namespace LeXtudio.Wpf.Cli
 {
     public static class CommandHandlers
     {
@@ -57,16 +57,16 @@ namespace LeXtudio.DevFlow.Cli
         {
             if (tokens.Count == 0)
             {
-                return WriteResult("devflow", "Usage: wpf devflow status [--host <host>] [--port <port>]", options);
+                return WriteResult("devflow", "Usage: dotnet wpflex devflow status [--host <host>] [--port <port>]", options);
             }
 
             var subcommand = tokens.Dequeue().ToLowerInvariant();
             return subcommand switch
             {
                 "status" => RunDevFlowStatus(tokens, options),
-                "help" => WriteResult("devflow", "Usage: wpf devflow status [--host <host>] [--port <port>]", options),
-                "--help" => WriteResult("devflow", "Usage: wpf devflow status [--host <host>] [--port <port>]", options),
-                "-h" => WriteResult("devflow", "Usage: wpf devflow status [--host <host>] [--port <port>]", options),
+                "help" => WriteResult("devflow", "Usage: dotnet wpflex devflow status [--host <host>] [--port <port>]", options),
+                "--help" => WriteResult("devflow", "Usage: dotnet wpflex devflow status [--host <host>] [--port <port>]", options),
+                "-h" => WriteResult("devflow", "Usage: dotnet wpflex devflow status [--host <host>] [--port <port>]", options),
                 _ => UnknownDevFlowSubcommand(subcommand)
             };
         }
@@ -136,7 +136,7 @@ namespace LeXtudio.DevFlow.Cli
         private static int UnknownDevFlowSubcommand(string subcommand)
         {
             Console.Error.WriteLine($"Unknown devflow subcommand: {subcommand}");
-            Console.Error.WriteLine("Run 'wpf devflow --help' for available commands.");
+            Console.Error.WriteLine("Run 'dotnet wpflex devflow --help' for available commands.");
             return 1;
         }
 

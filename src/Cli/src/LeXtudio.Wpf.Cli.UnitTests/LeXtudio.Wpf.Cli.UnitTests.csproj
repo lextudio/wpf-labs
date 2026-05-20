@@ -16,6 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LeXtudio.DevFlow.Cli\LeXtudio.DevFlow.Cli.csproj" />
+    <ProjectReference Include="..\LeXtudio.Wpf.Cli\LeXtudio.Wpf.Cli.csproj" />
   </ItemGroup>
 </Project>
