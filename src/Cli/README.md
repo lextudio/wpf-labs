@@ -1,4 +1,4 @@
-# LeXtudio.Wpf.Cli
+# LeXtudio.DevFlow.Cli
 
 A command-line tool for WPF development environment validation, project workflows, packaging, and diagnostics.
 
@@ -8,14 +8,14 @@ A command-line tool for WPF development environment validation, project workflow
 
 | Package | Description |
 |---------|-------------|
-| **LeXtudio.Wpf.Cli** | Global CLI tool (`wpf`) for WPF project workflows, diagnostics, and packaging. |
+| **LeXtudio.DevFlow.Cli** | Global CLI tool (`wpf`) for WPF project workflows, diagnostics, and packaging. |
 
 ## Quick Start
 
 ### 1. Install the CLI tool
 
 ```powershell
-dotnet tool install -g LeXtudio.Wpf.Cli
+dotnet tool install -g LeXtudio.DevFlow.Cli
 ```
 
 ### 2. Check your environment

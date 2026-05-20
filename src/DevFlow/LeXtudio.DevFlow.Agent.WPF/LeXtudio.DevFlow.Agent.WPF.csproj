@@ -1,14 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>WpfDevFlowTestApp</AssemblyName>
-    <RootNamespace>WpfDevFlowTestApp</RootNamespace>
+    <AssemblyName>LeXtudio.DevFlow.Agent.WPF</AssemblyName>
+    <RootNamespace>LeXtudio.DevFlow.Agent.WPF</RootNamespace>
   </PropertyGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\LeXtudio.DevFlow.Agent.WPF\LeXtudio.DevFlow.Agent.WPF.csproj" />
+    <ProjectReference Include="..\LeXtudio.DevFlow.Agent.Core\LeXtudio.DevFlow.Agent.Core.csproj" />
   </ItemGroup>
+
 </Project>

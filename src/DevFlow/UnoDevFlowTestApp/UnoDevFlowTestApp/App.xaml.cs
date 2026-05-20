@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using LeXtudio.Uno.DevFlow.Agent.Uno;
+using LeXtudio.DevFlow.Agent.Uno;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.DevFlow.Agent.Core;
 using Microsoft.Maui.DevFlow.Logging;

@@ -6,8 +6,8 @@ This folder contains a new local WPF DevFlow implementation that reuses generic 
 
 ## What is included
 
-- `LeXtudio.Wpf.DevFlow.Agent.Core` — WPF-agnostic DevFlow HTTP server, DTOs, and shared agent plumbing
-- `LeXtudio.Wpf.DevFlow.Agent.WPF` — WPF-specific visual tree walker, screenshot capture, and UI interaction support
+- `LeXtudio.DevFlow.Agent.Core` — WPF-agnostic DevFlow HTTP server, DTOs, and shared agent plumbing
+- `LeXtudio.DevFlow.Agent.WPF` — WPF-specific visual tree walker, screenshot capture, and UI interaction support
 
 ## Reuse strategy
 
@@ -18,7 +18,7 @@ The WPF DevFlow projects reuse existing source from `external/maui-labs/src/DevF
 - agent configuration (`AgentOptions.cs`)
 - DevFlow action attribute metadata (`DevFlowActionAttribute.cs`)
 
-Those files are consumed as linked source files in the local `LeXtudio.Wpf.DevFlow.Agent.Core` project.
+Those files are consumed as linked source files in the local `LeXtudio.DevFlow.Agent.Core` project.
 
 ## Build
 
@@ -34,7 +34,7 @@ dotnet build WpfDevFlow.sln
 WPF apps can register the agent during startup:
 
 ```csharp
-using LeXtudio.Wpf.DevFlow.Agent.WPF;
+using LeXtudio.DevFlow.Agent.WPF;
 
 public partial class App : Application
 {
@@ -48,7 +48,7 @@ public partial class App : Application
 
 ## Uno support preview
 
-- `LeXtudio.Uno.DevFlow.Agent.Uno` is scaffolded as the initial Uno DevFlow platform package.
+- `LeXtudio.DevFlow.Agent.Uno` is scaffolded as the initial Uno DevFlow platform package.
 - `UnoDevFlow.sln` contains the shared agent core plus the new Uno project.
 - The Uno package currently has skeleton tree-walking and registration helpers so Uno-specific work can be added in place.
 

@@ -31,7 +31,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\LeXtudio.Uno.DevFlow.Agent.Uno\LeXtudio.Uno.DevFlow.Agent.Uno.csproj" />
+    <ProjectReference Include="..\..\LeXtudio.DevFlow.Agent.Uno\LeXtudio.DevFlow.Agent.Uno.csproj" />
     <ProjectReference Include="..\..\..\..\external\maui-labs\src\DevFlow\Microsoft.Maui.DevFlow.Logging\Microsoft.Maui.DevFlow.Logging.csproj" />
   </ItemGroup>
 

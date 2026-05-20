@@ -2,7 +2,7 @@
 
 ## Vision
 
-`LeXtudio.Wpf.Cli` should be the command-line companion for WPF developers on Windows. It should make tooling setup, project workflows, diagnostics, and packaging easier by providing a single, consistent CLI surface modeled after the MAUI CLI experience.
+`LeXtudio.DevFlow.Cli` should be the command-line companion for WPF developers on Windows. It should make tooling setup, project workflows, diagnostics, and packaging easier by providing a single, consistent CLI surface modeled after the MAUI CLI experience.
 
 ## Design Goals
 
@@ -119,8 +119,8 @@ A recommended folder layout:
 - `wpf-cli/`
   - `README.md`
   - `DESIGN.md`
-  - `src/LeXtudio.Wpf.Cli/`
-  - `src/LeXtudio.Wpf.Cli.UnitTests/`
+  - `src/LeXtudio.DevFlow.Cli/`
+  - `src/LeXtudio.DevFlow.Cli.UnitTests/`
   - `templates/`
   - `docs/`
   - `wpf-cli.slnf`

@@ -1,7 +1,7 @@
 using System;
 using System.Windows;
 using Microsoft.Maui.DevFlow.Agent.Core;
-using LeXtudio.Wpf.DevFlow.Agent.WPF;
+using LeXtudio.DevFlow.Agent.WPF;
 
 namespace WpfDevFlowTestApp;
 

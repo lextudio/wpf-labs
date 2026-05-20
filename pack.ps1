@@ -2,11 +2,11 @@ Param(
     [string]$OutDir = ".\dist",
     [string]$Configuration = "Release",
     [string[]]$Projects = @(
-        "src\DevFlow\LeXtudio.Wpf.DevFlow.Agent.Core\LeXtudio.Wpf.DevFlow.Agent.Core.csproj",
-        "src\DevFlow\LeXtudio.Wpf.DevFlow.Agent.WPF\LeXtudio.Wpf.DevFlow.Agent.WPF.csproj",
-        "src\DevFlow\LeXtudio.Uno.DevFlow.Agent.Uno\LeXtudio.Uno.DevFlow.Agent.Uno.csproj",
-        "src\DevFlow\LeXtudio.Wpf.DevFlow.Driver\LeXtudio.Wpf.DevFlow.Driver.csproj",
-        "src\Cli\src\LeXtudio.Wpf.Cli\LeXtudio.Wpf.Cli.csproj"
+        "src\DevFlow\LeXtudio.DevFlow.Agent.Core\LeXtudio.DevFlow.Agent.Core.csproj",
+        "src\DevFlow\LeXtudio.DevFlow.Agent.WPF\LeXtudio.DevFlow.Agent.WPF.csproj",
+        "src\DevFlow\LeXtudio.DevFlow.Agent.Uno\LeXtudio.DevFlow.Agent.Uno.csproj",
+        "src\DevFlow\LeXtudio.DevFlow.Driver\LeXtudio.DevFlow.Driver.csproj",
+        "src\Cli\src\LeXtudio.DevFlow.Cli\LeXtudio.DevFlow.Cli.csproj"
     )
 )
 
