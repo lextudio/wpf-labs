@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <UseMSBuildTestInfrastructure>true</UseMSBuildTestInfrastructure>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
   </PropertyGroup>
 
   <ItemGroup>

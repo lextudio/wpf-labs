@@ -7,6 +7,7 @@
     <Nullable>enable</Nullable>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <UseMSBuildTestInfrastructure>true</UseMSBuildTestInfrastructure>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <IsPackable>false</IsPackable>
     <AssemblyName>LeXtudio.DevFlow.Agent.WPF.Tests</AssemblyName>
     <RootNamespace>LeXtudio.DevFlow.Agent.WPF.Tests</RootNamespace>

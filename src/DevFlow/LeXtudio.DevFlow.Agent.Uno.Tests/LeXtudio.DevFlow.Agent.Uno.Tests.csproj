@@ -3,8 +3,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <UseMicrosoftTestingPlatformRunner>false</UseMicrosoftTestingPlatformRunner>
-    <UseMSBuildTestInfrastructure>false</UseMSBuildTestInfrastructure>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <UseMSBuildTestInfrastructure>true</UseMSBuildTestInfrastructure>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <IsPackable>false</IsPackable>
     <AssemblyName>LeXtudio.DevFlow.Agent.Uno.Tests</AssemblyName>
     <RootNamespace>LeXtudio.DevFlow.Agent.Uno.Tests</RootNamespace>
@@ -12,7 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.v3.mtp-v2" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 </Project>

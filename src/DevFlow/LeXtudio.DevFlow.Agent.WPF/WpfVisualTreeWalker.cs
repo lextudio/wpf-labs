@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using Microsoft.Maui.DevFlow.Agent.Core;
 using LeXtudio.DevFlow.Agent.Core;
 
@@ -230,10 +231,13 @@ public class WpfVisualTreeWalker : IVisualTreeWalker
         if (element == null)
             yield break;
 
-        var visualChildrenCount = VisualTreeHelper.GetChildrenCount(element);
-        for (var i = 0; i < visualChildrenCount; i++)
+        if (element is Visual || element is Visual3D)
         {
-            yield return VisualTreeHelper.GetChild(element, i);
+            var visualChildrenCount = VisualTreeHelper.GetChildrenCount(element);
+            for (var i = 0; i < visualChildrenCount; i++)
+            {
+                yield return VisualTreeHelper.GetChild(element, i);
+            }
         }
 
         if (element is ContentControl contentControl && contentControl.Content is DependencyObject content)
