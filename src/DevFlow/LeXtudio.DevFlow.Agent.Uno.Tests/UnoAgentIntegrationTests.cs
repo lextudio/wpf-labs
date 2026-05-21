@@ -143,15 +143,27 @@ public class UnoAgentIntegrationTests
                 new StringContent("{\"id\":\"MainScrollViewer\",\"deltaY\":1000}", Encoding.UTF8, "application/json"));
             scrollResponse.EnsureSuccessStatusCode();
 
-            using var elementResponse = await client.GetAsync("/api/v1/ui/element?id=MainScrollViewer");
-            elementResponse.EnsureSuccessStatusCode();
-            using var elementDoc = JsonDocument.Parse(await elementResponse.Content.ReadAsStreamAsync());
-            var offset = elementDoc.RootElement
-                .GetProperty("frameworkProperties")
-                .GetProperty("verticalOffset")
-                .GetString();
+            // The Uno host on Windows uses the Windows desktop backend and typically reports
+            // vertical offset immediately after a scroll action. Non-Windows Uno desktop hosts
+            // can have different dispatch/render timing, so we poll the UI state on macOS/Linux.
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                using var elementResponse = await client.GetAsync("/api/v1/ui/element?id=MainScrollViewer");
+                elementResponse.EnsureSuccessStatusCode();
+                using var elementDoc = JsonDocument.Parse(await elementResponse.Content.ReadAsStreamAsync());
+                var offset = elementDoc.RootElement
+                    .GetProperty("frameworkProperties")
+                    .GetProperty("verticalOffset")
+                    .GetString();
 
-            Assert.True(double.TryParse(offset, out var offsetValue) && offsetValue > 0);
+                Assert.True(double.TryParse(offset, out var offsetValue) && offsetValue > 0,
+                    "ScrollViewer verticalOffset did not increase immediately on Windows.");
+            }
+            else
+            {
+                var offsetValue = await PollForScrollOffsetAsync(client, "MainScrollViewer", TimeSpan.FromSeconds(10));
+                Assert.True(offsetValue > 0, "ScrollViewer verticalOffset did not increase after scrolling.");
+            }
 
             using var targetResponse = await client.GetAsync("/api/v1/ui/element?id=ScrollTargetText");
             targetResponse.EnsureSuccessStatusCode();
@@ -168,6 +180,31 @@ public class UnoAgentIntegrationTests
                 process.WaitForExit(5000);
             }
         }
+    }
+
+    private static async Task<double> PollForScrollOffsetAsync(HttpClient client, string elementId, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+
+        while (DateTime.UtcNow < deadline)
+        {
+            using var elementResponse = await client.GetAsync($"/api/v1/ui/element?id={elementId}");
+            if (elementResponse.IsSuccessStatusCode)
+            {
+                using var elementDoc = JsonDocument.Parse(await elementResponse.Content.ReadAsStreamAsync());
+                if (elementDoc.RootElement.TryGetProperty("frameworkProperties", out var frameworkProps) &&
+                    frameworkProps.TryGetProperty("verticalOffset", out var offsetProp) &&
+                    double.TryParse(offsetProp.GetString(), out var offsetValue) &&
+                    offsetValue > 0)
+                {
+                    return offsetValue;
+                }
+            }
+
+            await Task.Delay(250);
+        }
+
+        return 0;
     }
 
     private static async Task<JsonElement> PollAgentStatusAsync(HttpClient client, TimeSpan timeout)

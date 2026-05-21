@@ -294,8 +294,18 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         return false;
     }
 
-    private static object? ConvertToParameterType(object value, Type targetType)
+    private static object? ConvertToParameterType(object? value, Type targetType)
     {
+        if (value == null)
+        {
+            if (!targetType.IsValueType || Nullable.GetUnderlyingType(targetType) != null)
+            {
+                return null;
+            }
+
+            throw new InvalidOperationException($"Cannot convert null to non-nullable type {targetType.FullName}.");
+        }
+
         var effectiveType = Nullable.GetUnderlyingType(targetType) ?? targetType;
         return Convert.ChangeType(value, effectiveType);
     }
