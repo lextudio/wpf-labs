@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using LeXtudio.DevFlow.Agent.Core;
@@ -66,7 +67,7 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
 
     protected override Task<byte[]?> CaptureScreenshotAsync()
     {
-        return Task.FromResult<byte[]?>(null);
+        return InvokeOnUiThreadAsync(CaptureScreenshotOnUiThreadAsync);
     }
 
     protected override Task<bool> TryTapAsync(string elementId)
@@ -146,6 +147,44 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         return completion.Task;
     }
 
+    private Task<T> InvokeOnUiThreadAsync<T>(Func<Task<T>> callback)
+    {
+        var dispatcherQueue = _dispatcherQueue;
+        if (dispatcherQueue == null)
+            return callback();
+
+        var hasThreadAccess = GetPropertyValue(dispatcherQueue, "HasThreadAccess");
+        if (hasThreadAccess is bool hasAccess && hasAccess)
+            return callback();
+
+        var tryEnqueue = dispatcherQueue.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(method => method.Name == "TryEnqueue" && method.GetParameters().Length == 1);
+        if (tryEnqueue == null)
+            return callback();
+
+        var handlerType = tryEnqueue.GetParameters()[0].ParameterType;
+        var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        async void InvokeCallback()
+        {
+            try
+            {
+                completion.SetResult(await callback().ConfigureAwait(false));
+            }
+            catch (Exception ex)
+            {
+                completion.SetException(ex);
+            }
+        }
+
+        var handler = Delegate.CreateDelegate(handlerType, (Action)InvokeCallback, nameof(Action.Invoke));
+        var queued = tryEnqueue.Invoke(dispatcherQueue, new object[] { handler });
+        if (queued is bool wasQueued && !wasQueued)
+            completion.SetException(new InvalidOperationException("Unable to enqueue work on the Uno UI dispatcher."));
+
+        return completion.Task;
+    }
+
     private static object? GetDispatcherQueue()
     {
         var dispatcherQueueType = FindType(
@@ -170,6 +209,223 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         var mainWindow = GetPropertyValue(app, "MainWindow")
             ?? GetPropertyValue(app, "CurrentWindow");
         return GetPropertyValue(mainWindow, "DispatcherQueue");
+    }
+
+    private async Task<byte[]?> CaptureScreenshotOnUiThreadAsync()
+    {
+        try
+        {
+            var root = GetRootVisual();
+            if (root == null)
+                return null;
+
+            var renderTargetBitmapType = FindType(
+                "Microsoft.UI.Xaml.Media.Imaging.RenderTargetBitmap",
+                "Windows.UI.Xaml.Media.Imaging.RenderTargetBitmap");
+            if (renderTargetBitmapType == null)
+                return null;
+
+            var renderTargetBitmap = Activator.CreateInstance(renderTargetBitmapType);
+            if (renderTargetBitmap == null)
+                return null;
+
+            var renderAsync = renderTargetBitmapType.GetMethod("RenderAsync", new[] { root.GetType() })
+                ?? renderTargetBitmapType.GetMethod("RenderAsync", [typeof(object)])
+                ?? renderTargetBitmapType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                    .FirstOrDefault(method => method.Name == "RenderAsync" && method.GetParameters().Length == 1);
+            if (renderAsync == null)
+                return null;
+
+            await AwaitAsync(renderAsync.Invoke(renderTargetBitmap, new[] { root })).ConfigureAwait(false);
+
+            var pixelWidth = GetIntProperty(renderTargetBitmap, "PixelWidth");
+            var pixelHeight = GetIntProperty(renderTargetBitmap, "PixelHeight");
+            if (pixelWidth <= 0 || pixelHeight <= 0)
+                return null;
+
+            var getPixelsAsync = renderTargetBitmapType.GetMethod("GetPixelsAsync", Type.EmptyTypes);
+            if (getPixelsAsync == null)
+                return null;
+
+            var buffer = await AwaitAsync(getPixelsAsync.Invoke(renderTargetBitmap, null)).ConfigureAwait(false);
+            var pixels = BufferToByteArray(buffer);
+            if (pixels == null || pixels.Length == 0)
+                return null;
+
+            return await EncodePngAsync(pixelWidth.Value, pixelHeight.Value, pixels).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[UnoAgentService] Screenshot capture failed: {ex}");
+            return null;
+        }
+    }
+
+    private object? GetRootVisual()
+    {
+        return _treeWalker.FindRootElementObject();
+    }
+
+    private static async Task<object?> AwaitAsync(object? operation)
+    {
+        if (operation is not Task task)
+        {
+            var statusProperty = operation?.GetType().GetProperty("Status", BindingFlags.Public | BindingFlags.Instance);
+            if (statusProperty != null)
+            {
+                while (true)
+                {
+                    var status = statusProperty.GetValue(operation)?.ToString();
+                    if (string.Equals(status, "Completed", StringComparison.OrdinalIgnoreCase))
+                        break;
+
+                    if (string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var errorCode = operation?.GetType().GetProperty("ErrorCode", BindingFlags.Public | BindingFlags.Instance)?.GetValue(operation);
+                        throw new InvalidOperationException($"WinRT async operation failed with status Error. ErrorCode={errorCode}");
+                    }
+
+                    if (string.Equals(status, "Canceled", StringComparison.OrdinalIgnoreCase))
+                        throw new TaskCanceledException("WinRT async operation was canceled.");
+
+                    await Task.Delay(10).ConfigureAwait(false);
+                }
+
+                var getResults = operation?.GetType().GetMethod("GetResults", BindingFlags.Public | BindingFlags.Instance);
+                return getResults?.Invoke(operation, null);
+            }
+
+            return operation;
+        }
+
+        await task.ConfigureAwait(false);
+        var resultProperty = task.GetType().GetProperty("Result", BindingFlags.Public | BindingFlags.Instance);
+        return resultProperty?.GetValue(task);
+    }
+
+    private static byte[]? BufferToByteArray(object? buffer)
+    {
+        if (buffer == null)
+            return null;
+
+        var extensionsType = Type.GetType("System.Runtime.InteropServices.WindowsRuntime.WindowsRuntimeBufferExtensions, System.Runtime.WindowsRuntime");
+        var toArray = extensionsType?.GetMethod("ToArray", BindingFlags.Public | BindingFlags.Static, null, [buffer.GetType()], null);
+        if (toArray != null)
+            return (byte[]?)toArray.Invoke(null, new[] { buffer });
+
+        var dataReaderType = FindType("Windows.Storage.Streams.DataReader");
+        if (dataReaderType == null)
+            return null;
+
+        var fromBuffer = dataReaderType.GetMethod("FromBuffer", BindingFlags.Public | BindingFlags.Static);
+        var reader = fromBuffer?.Invoke(null, new[] { buffer });
+        if (reader == null)
+            return null;
+
+        try
+        {
+            var unconsumedLength = (uint?)GetPropertyValue(reader, "UnconsumedBufferLength");
+            if (unconsumedLength is null or 0)
+                return null;
+
+            var bytes = new byte[unconsumedLength.Value];
+            dataReaderType.GetMethod("ReadBytes", BindingFlags.Public | BindingFlags.Instance)?.Invoke(reader, new object[] { bytes });
+            return bytes;
+        }
+        finally
+        {
+            if (reader is IDisposable disposable)
+                disposable.Dispose();
+        }
+    }
+
+    private static async Task<byte[]?> EncodePngAsync(int width, int height, byte[] pixels)
+    {
+        var streamType = FindType("Windows.Storage.Streams.InMemoryRandomAccessStream");
+        var encoderType = FindType("Windows.Graphics.Imaging.BitmapEncoder");
+        var pixelFormatType = FindType("Windows.Graphics.Imaging.BitmapPixelFormat");
+        var alphaModeType = FindType("Windows.Graphics.Imaging.BitmapAlphaMode");
+        if (streamType == null || encoderType == null || pixelFormatType == null || alphaModeType == null)
+            return null;
+
+        var stream = Activator.CreateInstance(streamType);
+        if (stream == null)
+            return null;
+
+        var pngEncoderId = encoderType.GetProperty("PngEncoderId", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+        if (pngEncoderId == null)
+            return null;
+
+        var createAsync = encoderType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .FirstOrDefault(method => method.Name == "CreateAsync" && method.GetParameters().Length == 2);
+        if (createAsync == null)
+            return null;
+
+        var encoder = await AwaitAsync(createAsync.Invoke(null, new[] { pngEncoderId, stream })).ConfigureAwait(false);
+        if (encoder == null)
+            return null;
+
+        var pixelFormat = Enum.Parse(pixelFormatType, "Bgra8");
+        var alphaMode = Enum.Parse(alphaModeType, "Premultiplied");
+
+        encoderType.GetMethod("SetPixelData", BindingFlags.Public | BindingFlags.Instance)?.Invoke(
+            encoder,
+            new object[] { pixelFormat, alphaMode, (uint)width, (uint)height, 96d, 96d, pixels });
+
+        var flushAsync = encoderType.GetMethod("FlushAsync", BindingFlags.Public | BindingFlags.Instance);
+        if (flushAsync == null)
+            return null;
+
+        await AwaitAsync(flushAsync.Invoke(encoder, null)).ConfigureAwait(false);
+
+        var seekMethod = streamType.GetMethod("Seek", BindingFlags.Public | BindingFlags.Instance);
+        seekMethod?.Invoke(stream, new object[] { 0UL });
+
+        var sizeValue = GetPropertyValue(stream, "Size");
+        var streamSize = sizeValue switch
+        {
+            ulong u => u,
+            long l when l >= 0 => (ulong)l,
+            uint ui => ui,
+            int i when i >= 0 => (ulong)i,
+            _ => 0UL
+        };
+        if (streamSize == 0)
+            return null;
+
+        var getInputStreamAt = streamType.GetMethod("GetInputStreamAt", BindingFlags.Public | BindingFlags.Instance);
+        var inputStream = getInputStreamAt?.Invoke(stream, new object[] { 0UL });
+        if (inputStream == null)
+            return null;
+
+        var bufferType = FindType("Windows.Storage.Streams.Buffer");
+        var inputStreamOptionsType = FindType("Windows.Storage.Streams.InputStreamOptions");
+        if (bufferType == null || inputStreamOptionsType == null)
+            return null;
+
+        var winRtBuffer = Activator.CreateInstance(bufferType, (uint)streamSize);
+        if (winRtBuffer == null)
+            return null;
+
+        var inputStreamOptionsNone = Enum.Parse(inputStreamOptionsType, "None");
+        var readAsync = inputStream.GetType().GetMethod("ReadAsync", BindingFlags.Public | BindingFlags.Instance);
+        if (readAsync == null)
+            return null;
+
+        var readBuffer = await AwaitAsync(readAsync.Invoke(inputStream, new[] { winRtBuffer, (object)(uint)streamSize, inputStreamOptionsNone })).ConfigureAwait(false);
+        return BufferToByteArray(readBuffer);
+    }
+
+    private static int? GetIntProperty(object instance, string propertyName)
+    {
+        var value = GetPropertyValue(instance, propertyName);
+        return value switch
+        {
+            int intValue => intValue,
+            uint uintValue when uintValue <= int.MaxValue => (int)uintValue,
+            long longValue when longValue is >= int.MinValue and <= int.MaxValue => (int)longValue,
+            _ => null
+        };
     }
 
     private static object? FindScrollViewer(object element)

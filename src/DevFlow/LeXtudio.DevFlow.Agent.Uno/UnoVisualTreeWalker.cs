@@ -88,6 +88,17 @@ public sealed class UnoVisualTreeWalker : IVisualTreeWalker
         return null;
     }
 
+    public object? FindRootElementObject()
+    {
+        var app = GetCurrentApplication();
+        if (app == null)
+            return null;
+
+        return GetWindows(app)
+            .Select(GetWindowRoot)
+            .FirstOrDefault(root => root != null);
+    }
+
     private object? FindElementObjectById(object element, string id)
     {
         if (string.Equals(GetElementId(element), id, StringComparison.OrdinalIgnoreCase))
