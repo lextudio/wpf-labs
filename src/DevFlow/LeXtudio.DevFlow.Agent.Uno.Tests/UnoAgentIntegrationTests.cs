@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -12,9 +13,20 @@ namespace LeXtudio.DevFlow.Agent.Uno.Tests;
 
 public class UnoAgentIntegrationTests
 {
+    public static IEnumerable<object[]> UnoTestTargets
+    {
+        get
+        {
+            yield return new object[] { "net10.0-desktop" };
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                yield return new object[] { "net10.0-windows10.0.19041.0" };
+            }
+        }
+    }
+
     [Theory]
-    [InlineData("net10.0-desktop")]
-    [InlineData("net10.0-windows10.0.19041.0")]
+    [MemberData(nameof(UnoTestTargets))]
     public async Task UnoDevFlowTestApp_AgentStatus_ReturnsRunning(string targetFramework)
     {
         var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
@@ -54,8 +66,7 @@ public class UnoAgentIntegrationTests
     }
 
     [Theory]
-    [InlineData("net10.0-desktop")]
-    [InlineData("net10.0-windows10.0.19041.0")]
+    [MemberData(nameof(UnoTestTargets))]
     public async Task TapButton_UpdatesResponseText(string targetFramework)
     {
         var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
@@ -102,8 +113,7 @@ public class UnoAgentIntegrationTests
     }
 
     [Theory]
-    [InlineData("net10.0-desktop")]
-    [InlineData("net10.0-windows10.0.19041.0")]
+    [MemberData(nameof(UnoTestTargets))]
     public async Task ScrollViewer_UpdatesVerticalOffset(string targetFramework)
     {
         var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
