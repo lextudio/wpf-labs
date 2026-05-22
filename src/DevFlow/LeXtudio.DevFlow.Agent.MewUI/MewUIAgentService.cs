@@ -1,8 +1,11 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using Aprillz.MewUI;
 using Aprillz.MewUI.Controls;
 using Microsoft.Maui.DevFlow.Agent.Core;
@@ -318,30 +321,21 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
 
             try
             {
-                using var bitmap = new System.Drawing.Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                var rect = new System.Drawing.Rectangle(0, 0, width, height);
-                var bitmapData = bitmap.LockBits(rect, System.Drawing.Imaging.ImageLockMode.WriteOnly, bitmap.PixelFormat);
-                try
+                var pixelData = new byte[width * height * 4];
+                for (var row = 0; row < height; row++)
                 {
-                    var pixelsBase = bitmapData.Scan0;
-                    for (var row = 0; row < height; row++)
+                    for (var col = 0; col < width; col++)
                     {
-                        for (var col = 0; col < width; col++)
-                        {
-                            var pixel = XGetPixel(image, col, row);
-                            var argb = unchecked((int)(0xFF000000u | pixel));
-                            Marshal.WriteInt32(pixelsBase + row * bitmapData.Stride + col * 4, argb);
-                        }
+                        var pixel = XGetPixel(image, col, row);
+                        var index = (row * width + col) * 4;
+                        pixelData[index + 0] = (byte)((pixel >> 16) & 0xFF);
+                        pixelData[index + 1] = (byte)((pixel >> 8) & 0xFF);
+                        pixelData[index + 2] = (byte)(pixel & 0xFF);
+                        pixelData[index + 3] = 0xFF;
                     }
                 }
-                finally
-                {
-                    bitmap.UnlockBits(bitmapData);
-                }
 
-                using var ms = new MemoryStream();
-                bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                return ms.ToArray();
+                return EncodePng(width, height, pixelData);
             }
             finally
             {
@@ -352,6 +346,87 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
         {
             XCloseDisplay(display);
         }
+    }
+
+    private static byte[] EncodePng(int width, int height, byte[] rgba)
+    {
+        const int bytesPerPixel = 4;
+        var pngSignature = new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 };
+        using var output = new MemoryStream();
+        output.Write(pngSignature, 0, pngSignature.Length);
+
+        var ihdr = new byte[13];
+        BinaryPrimitives.WriteInt32BigEndian(ihdr.AsSpan(0, 4), width);
+        BinaryPrimitives.WriteInt32BigEndian(ihdr.AsSpan(4, 4), height);
+        ihdr[8] = 8;
+        ihdr[9] = 6;
+        ihdr[10] = 0;
+        ihdr[11] = 0;
+        ihdr[12] = 0;
+        WritePngChunk(output, "IHDR", ihdr);
+
+        var raw = new byte[(width * bytesPerPixel + 1) * height];
+        for (var row = 0; row < height; row++)
+        {
+            var rowStart = row * (width * bytesPerPixel + 1);
+            raw[rowStart] = 0;
+            Buffer.BlockCopy(rgba, row * width * bytesPerPixel, raw, rowStart + 1, width * bytesPerPixel);
+        }
+
+        using var idatStream = new MemoryStream();
+        using (var deflate = new DeflateStream(idatStream, CompressionLevel.Fastest, true))
+        {
+            deflate.Write(raw);
+        }
+
+        WritePngChunk(output, "IDAT", idatStream.ToArray());
+        WritePngChunk(output, "IEND", ReadOnlySpan<byte>.Empty);
+        return output.ToArray();
+    }
+
+    private static void WritePngChunk(Stream output, string type, ReadOnlySpan<byte> data)
+    {
+        var typeBytes = Encoding.ASCII.GetBytes(type);
+        var lengthBytes = new byte[4];
+        BinaryPrimitives.WriteInt32BigEndian(lengthBytes, data.Length);
+        output.Write(lengthBytes, 0, lengthBytes.Length);
+        output.Write(typeBytes, 0, typeBytes.Length);
+        output.Write(data);
+
+        var crc = ComputeCrc(typeBytes, data);
+        var crcBytes = new byte[4];
+        BinaryPrimitives.WriteUInt32BigEndian(crcBytes, crc);
+        output.Write(crcBytes, 0, crcBytes.Length);
+    }
+
+    private static uint ComputeCrc(ReadOnlySpan<byte> typeBytes, ReadOnlySpan<byte> data)
+    {
+        var crc = 0xFFFFFFFFu;
+        foreach (var b in typeBytes)
+            crc = (crc >> 8) ^ CrcTable[(crc ^ b) & 0xFF];
+        foreach (var b in data)
+            crc = (crc >> 8) ^ CrcTable[(crc ^ b) & 0xFF];
+        return crc ^ 0xFFFFFFFFu;
+    }
+
+    private static readonly uint[] CrcTable = CreateCrcTable();
+
+    private static uint[] CreateCrcTable()
+    {
+        var table = new uint[256];
+        for (uint i = 0; i < table.Length; i++)
+        {
+            var c = i;
+            for (var j = 0; j < 8; j++)
+            {
+                if ((c & 1) != 0)
+                    c = 0xEDB88320u ^ (c >> 1);
+                else
+                    c >>= 1;
+            }
+            table[i] = c;
+        }
+        return table;
     }
 
     private static byte[]? CaptureWindow(nint hwnd)
