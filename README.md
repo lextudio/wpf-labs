@@ -9,6 +9,7 @@ This workspace contains the WPF DevFlow proof-of-concept and supporting tooling 
 - [![LeXtudio.DevFlow.Agent.Uno](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.Uno.svg?label=LeXtudio.DevFlow.Agent.Uno)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Uno)
 - [![LeXtudio.DevFlow.Driver](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Driver.svg?label=LeXtudio.DevFlow.Driver)](https://www.nuget.org/packages/LeXtudio.DevFlow.Driver)
 - [![LeXtudio.Wpf.Cli](https://img.shields.io/nuget/v/LeXtudio.Wpf.Cli.svg?label=LeXtudio.Wpf.Cli)](https://www.nuget.org/packages/LeXtudio.Wpf.Cli)
+- [![LeXtudio.MewUI.Cli](https://img.shields.io/nuget/v/LeXtudio.MewUI.Cli.svg?label=LeXtudio.MewUI.Cli)](https://www.nuget.org/packages/LeXtudio.MewUI.Cli)
 
 ## Workspace structure
 
@@ -89,6 +90,7 @@ dotnet test --project LeXtudio.DevFlow.Agent.WPF.Tests.csproj
 cd src\DevFlow\LeXtudio.DevFlow.Agent.Uno.Tests
 dotnet test --project LeXtudio.DevFlow.Agent.Uno.Tests.csproj
 ```
+
 ## Use in your projects
 
 You can use prebuilt NuGet packages
@@ -112,6 +114,13 @@ dotnet add package LeXtudio.DevFlow.Driver
 ```powershell
 dotnet tool install -g LeXtudio.Wpf.Cli
 dotnet wpflex --help
+```
+
+## Install MewUI CLI tool
+
+```powershell
+dotnet tool install -g LeXtudio.MewUI.Cli
+dotnet mewlex --help
 ```
 
 ## Notes

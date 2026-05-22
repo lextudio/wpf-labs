@@ -8,10 +8,16 @@
     <PackageId>LeXtudio.MewUI.Cli</PackageId>
     <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>dotnet-mewui</ToolCommandName>
+    <ToolCommandName>dotnet-mewlex</ToolCommandName>
     <Description>CLI for LeXtudio MewUI DevFlow workflows.</Description>
     <PackageTags>mewui;devflow;cli;tool;automation</PackageTags>
+    <PackageIcon>company_logo_512.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\..\..\images\company_logo_512.png" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../../../src/DevFlow/LeXtudio.DevFlow.Driver/LeXtudio.DevFlow.Driver.csproj" />
   </ItemGroup>

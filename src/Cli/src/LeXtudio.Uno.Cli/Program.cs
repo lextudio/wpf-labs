@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace LeXtudio.MewUI.Cli
+namespace LeXtudio.Uno.Cli
 {
     public static class Program
     {
@@ -96,15 +96,15 @@ namespace LeXtudio.MewUI.Cli
         private static int UnknownCommand(string command)
         {
             Console.Error.WriteLine($"Unknown command: {command}");
-            Console.Error.WriteLine("Run 'dotnet mewlex --help' for available commands.");
+            Console.Error.WriteLine("Run 'dotnet unolex --help' for available commands.");
             return 1;
         }
 
         private static void ShowHelp()
         {
-            Console.WriteLine("LeXtudio.MewUI.Cli - MewUI command line utility");
+            Console.WriteLine("LeXtudio.Uno.Cli - Uno command line utility");
             Console.WriteLine();
-            Console.WriteLine("Usage: dotnet mewlex [options] <command> [command-options]");
+            Console.WriteLine("Usage: dotnet unolex [options] <command> [command-options]");
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine("  --json      Emit structured JSON output");
@@ -114,16 +114,16 @@ namespace LeXtudio.MewUI.Cli
             Console.WriteLine("  --help, -h  Show help information");
             Console.WriteLine();
             Console.WriteLine("Commands:");
-            Console.WriteLine("  doctor       Validate the MewUI development environment");
+            Console.WriteLine("  doctor       Validate the Uno development environment");
             Console.WriteLine("  version      Display CLI and environment version information");
-            Console.WriteLine("  new          Scaffold a new MewUI app");
-            Console.WriteLine("  build        Build a MewUI project");
-            Console.WriteLine("  run          Run a MewUI application");
-            Console.WriteLine("  publish      Publish a MewUI application");
-            Console.WriteLine("  package      Package MewUI output artifacts");
-            Console.WriteLine("  diagnostics  Run MewUI diagnostics and validation");
+            Console.WriteLine("  new          Scaffold a new Uno app");
+            Console.WriteLine("  build        Build an Uno project");
+            Console.WriteLine("  run          Run an Uno application");
+            Console.WriteLine("  publish      Publish an Uno application");
+            Console.WriteLine("  package      Package Uno output artifacts");
+            Console.WriteLine("  diagnostics  Run Uno diagnostics and validation");
             Console.WriteLine("  env          Inspect installed SDKs and tooling");
-            Console.WriteLine("  devflow      Query a running MewUI DevFlow agent and inspect runtime state");
+            Console.WriteLine("  devflow      Query a running Uno DevFlow agent and inspect runtime state");
             Console.WriteLine("    status     Show DevFlow agent status");
             Console.WriteLine("    screenshot Capture a screenshot from a running DevFlow agent");
             Console.WriteLine("    tap        Send a tap action to a running DevFlow agent");

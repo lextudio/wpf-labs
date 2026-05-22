@@ -9,45 +9,51 @@ using System.Text;
 using System.Text.Json;
 using LeXtudio.DevFlow.Driver;
 
-namespace LeXtudio.MewUI.Cli
+namespace LeXtudio.Uno.Cli
 {
     public static class CommandHandlers
     {
         public static int RunDoctor(OutputOptions options)
         {
-            return WriteResult("doctor", "Validated the MewUI development environment.", options);
+            return WriteResult("doctor", "Validated the Uno development environment.", options);
         }
 
         public static int RunVersion(OutputOptions options)
         {
-            return WriteResult("version", "LeXtudio.MewUI.Cli version 1.0.0", options);
+            return WriteResult("version", "LeXtudio.Uno.Cli version 1.0.0", options);
         }
 
         public static int RunNew(Queue<string> tokens, OutputOptions options)
         {
-            var name = tokens.Count > 0 ? tokens.Dequeue() : "MewUIApp";
+            var name = tokens.Count > 0 ? tokens.Dequeue() : "UnoApp";
             var targetDirectory = Path.GetFullPath(name);
 
             if (Directory.Exists(targetDirectory) || File.Exists(targetDirectory))
                 return WriteResult("new", $"Target already exists: {targetDirectory}", options);
 
+            var dotnetArgs = new StringBuilder();
+            dotnetArgs.Append("new unoapp");
+            dotnetArgs.Append($" --name \"{name}\"");
+            dotnetArgs.Append($" --output \"{targetDirectory}\"");
+            dotnetArgs.Append(" --preset blank");
+            dotnetArgs.Append(" --platforms desktop");
+            dotnetArgs.Append(" --tfm net10.0");
+            dotnetArgs.Append(" --markup xaml");
+            dotnetArgs.Append(" --renderer skia");
+            dotnetArgs.Append(" --tests none");
+            dotnetArgs.Append(" --no-update-check");
+
             if (options.DryRun)
             {
-                Console.WriteLine($"[dry-run] create new MewUI app in {targetDirectory}");
+                Console.WriteLine($"[dry-run] dotnet {dotnetArgs}");
                 return 0;
             }
 
-            Directory.CreateDirectory(targetDirectory);
-            var projectReference = TryResolveLocalAgentProjectReference(targetDirectory);
-            var includeAgent = projectReference != null;
-            File.WriteAllText(Path.Combine(targetDirectory, $"{name}.csproj"), GetMewUIProjectFile(name, projectReference));
-            File.WriteAllText(Path.Combine(targetDirectory, "Program.cs"), GetMewUIProgramCode(includeAgent));
+            var exitCode = RunDotnetCommand(dotnetArgs.ToString(), options, Path.GetFullPath("."));
+            if (exitCode != 0)
+                return exitCode;
 
-            var message = includeAgent
-                ? $"Created MewUI app '{name}' with DevFlow agent support in {targetDirectory}"
-                : $"Created MewUI app '{name}' in {targetDirectory}. DevFlow agent support not wired because repository reference could not be resolved.";
-
-            return WriteResult("new", message, options);
+            return WriteResult("new", $"Created Uno app '{name}' from the official Uno Skia desktop template in {targetDirectory}", options);
         }
 
         public static int RunBuild(Queue<string> tokens, OutputOptions options)
@@ -128,7 +134,7 @@ namespace LeXtudio.MewUI.Cli
 
         public static int RunEnv(Queue<string> _, OutputOptions options)
         {
-            Console.WriteLine($"OS: {Environment.OSVersion}");
+            Console.WriteLine($"OS: {RuntimeInformation.OSDescription}");
             Console.WriteLine($"Process architecture: {RuntimeInformation.ProcessArchitecture}");
             return RunDotnetCommand("--info", options, Path.GetFullPath("."));
         }
@@ -137,7 +143,7 @@ namespace LeXtudio.MewUI.Cli
         {
             if (tokens.Count == 0)
             {
-                return WriteResult("devflow", "Usage: dotnet mewlex devflow <status|screenshot|tap> [options]", options);
+                return WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap> [options]", options);
             }
 
             var subcommand = tokens.Dequeue().ToLowerInvariant();
@@ -146,9 +152,9 @@ namespace LeXtudio.MewUI.Cli
                 "status" => RunDevFlowStatus(tokens, options),
                 "screenshot" => RunDevFlowScreenshot(tokens, options),
                 "tap" => RunDevFlowTap(tokens, options),
-                "help" => WriteResult("devflow", "Usage: dotnet mewlex devflow <status|screenshot|tap> [options]", options),
-                "--help" => WriteResult("devflow", "Usage: dotnet mewlex devflow <status|screenshot|tap> [options]", options),
-                "-h" => WriteResult("devflow", "Usage: dotnet mewlex devflow <status|screenshot|tap> [options]", options),
+                "help" => WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap> [options]", options),
+                "--help" => WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap> [options]", options),
+                "-h" => WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap> [options]", options),
                 _ => UnknownDevFlowSubcommand(subcommand)
             };
         }
@@ -164,7 +170,7 @@ namespace LeXtudio.MewUI.Cli
             }
             catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException)
             {
-                return WriteResult("devflow", $"Unable to contact MewUI DevFlow agent at {host}:{port}: {ex.Message}", options);
+                return WriteResult("devflow", $"Unable to contact Uno DevFlow agent at {host}:{port}: {ex.Message}", options);
             }
 
             if (status == null)
@@ -176,7 +182,7 @@ namespace LeXtudio.MewUI.Cli
                 return 0;
             }
 
-            Console.WriteLine("MewUI DevFlow agent status:");
+            Console.WriteLine("Uno DevFlow agent status:");
             Console.WriteLine($"  Name:        {status.Name}");
             Console.WriteLine($"  Id:          {status.Id}");
             Console.WriteLine($"  Framework:   {status.Framework}");
@@ -190,7 +196,7 @@ namespace LeXtudio.MewUI.Cli
         private static int RunDevFlowScreenshot(Queue<string> tokens, OutputOptions options)
         {
             ParseDevFlowOptions(tokens, out var host, out var port, out var outputFile);
-            outputFile ??= "mewui-devflow-screenshot.png";
+            outputFile ??= "uno-devflow-screenshot.png";
 
             if (options.DryRun)
             {
@@ -320,256 +326,6 @@ namespace LeXtudio.MewUI.Cli
             return target;
         }
 
-        private static string? TryResolveLocalAgentProjectReference(string newProjectDirectory)
-        {
-            var repoRoot = FindRepositoryRoot(Path.GetFullPath(newProjectDirectory));
-            if (repoRoot == null)
-                return null;
-
-            var projectPath = Path.Combine(repoRoot, "src", "DevFlow", "LeXtudio.DevFlow.Agent.MewUI", "LeXtudio.DevFlow.Agent.MewUI.csproj");
-            if (!File.Exists(projectPath))
-                return null;
-
-            var relative = Path.GetRelativePath(newProjectDirectory, projectPath).Replace(Path.DirectorySeparatorChar, '/');
-            return relative;
-        }
-
-        private static string? FindRepositoryRoot(string directory)
-        {
-            var current = new DirectoryInfo(directory);
-            while (current != null)
-            {
-                if (File.Exists(Path.Combine(current.FullName, ".git")) || Directory.Exists(Path.Combine(current.FullName, ".git")))
-                {
-                    return current.FullName;
-                }
-
-                current = current.Parent;
-            }
-
-            return null;
-        }
-
-        private static string GetMewUIProjectFile(string name, string? projectReference)
-        {
-            var referenceText = string.Empty;
-            if (!string.IsNullOrEmpty(projectReference))
-            {
-                referenceText = $"  <ItemGroup>\n    <ProjectReference Include=\"{projectReference}\" />\n  </ItemGroup>\n";
-            }
-
-            return $"<Project Sdk=\"Microsoft.NET.Sdk\">\n" +
-                   "  <PropertyGroup>\n" +
-                   "    <OutputType>Exe</OutputType>\n" +
-                   "    <TargetFramework>net10.0</TargetFramework>\n" +
-                   "    <RuntimeIdentifiers>win-x64;win-arm64;linux-x64;linux-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>\n" +
-                   "    <ImplicitUsings>enable</ImplicitUsings>\n" +
-                   "    <Nullable>enable</Nullable>\n" +
-                   "    <AssemblyName>" + name + "</AssemblyName>\n" +
-                   "    <RootNamespace>" + name + "</RootNamespace>\n" +
-                   "  </PropertyGroup>\n" +
-                   "  <ItemGroup>\n" +
-                   "    <PackageReference Include=\"Aprillz.MewUI.Core\" />\n" +
-                   "    <PackageReference Include=\"Aprillz.MewUI.Platform.Win32\" Condition=\"$(RuntimeIdentifier.StartsWith('win'))\" />\n" +
-                   "    <PackageReference Include=\"Aprillz.MewUI.Platform.MacOS\" Condition=\"$(RuntimeIdentifier.StartsWith('osx'))\" />\n" +
-                   "    <PackageReference Include=\"Aprillz.MewUI.Platform.X11\" Condition=\"$(RuntimeIdentifier.StartsWith('linux'))\" />\n" +
-                   "    <PackageReference Include=\"Aprillz.MewUI.Backend.Direct2D\" Condition=\"$(RuntimeIdentifier.StartsWith('win'))\" />\n" +
-                   "    <PackageReference Include=\"Aprillz.MewUI.Backend.MewVG.MacOS\" Condition=\"$(RuntimeIdentifier.StartsWith('osx'))\" />\n" +
-                   "    <PackageReference Include=\"Aprillz.MewUI.Backend.MewVG.X11\" Condition=\"$(RuntimeIdentifier.StartsWith('linux'))\" />\n" +
-                   "  </ItemGroup>\n" +
-                   referenceText +
-                   "</Project>\n";
-        }
-
-        private static string GetMewUIProgramCode(bool includeAgent)
-        {
-            if (!includeAgent)
-            {
-                return """
-using System;
-using System.Reflection;
-using Aprillz.MewUI;
-using Aprillz.MewUI.Controls;
-
-var window = new Window()
-    .Title("MewUI App")
-    .Resizable(900, 700)
-    .Content(
-        new StackPanel()
-            .Padding(16)
-            .Spacing(12)
-            .Children(
-                new Label { Text = "MewUI app created by LeXtudio.MewUI.Cli" },
-                new Label { Text = "DevFlow agent support was not detected in this repo." }
-            )
-    );
-
-TryRegisterPlatformHost();
-try
-{
-    Application.Run(window);
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"[MewUIApp] Application.Run failed: {ex}");
-    throw;
-}
-
-static void TryRegisterPlatformHost()
-{
-    if (OperatingSystem.IsWindows())
-    {
-        TryRegisterPlatform("Aprillz.MewUI.Win32Platform, Aprillz.MewUI.Platform.Win32");
-        TryRegisterPlatform("Aprillz.MewUI.Direct2DBackend, Aprillz.MewUI.Backend.Direct2D");
-        return;
-    }
-
-    if (OperatingSystem.IsLinux())
-    {
-        TryRegisterPlatform("Aprillz.MewUI.X11Platform, Aprillz.MewUI.Platform.X11");
-        TryRegisterPlatform("Aprillz.MewUI.MewVGX11Backend, Aprillz.MewUI.Backend.MewVG.X11");
-        return;
-    }
-
-    if (OperatingSystem.IsMacOS())
-    {
-        TryRegisterPlatform("Aprillz.MewUI.MacOSPlatform, Aprillz.MewUI.Platform.MacOS");
-        TryRegisterPlatform("Aprillz.MewUI.MewVGMacOSBackend, Aprillz.MewUI.Backend.MewVG.MacOS");
-        return;
-    }
-}
-
-static void TryRegisterPlatform(string typeName)
-{
-    var type = Type.GetType(typeName, throwOnError: false, ignoreCase: false);
-    if (type == null)
-    {
-        Console.WriteLine($"[MewUIApp] Platform registration type not found: {typeName}");
-        return;
-    }
-
-    var registerMethod = type.GetMethod("Register", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-    if (registerMethod == null)
-    {
-        Console.WriteLine($"[MewUIApp] Register method not found on {typeName}");
-        return;
-    }
-
-    registerMethod.Invoke(null, null);
-}
-""";
-            }
-
-            return """
-using System;
-using System.Reflection;
-using Aprillz.MewUI;
-using Aprillz.MewUI.Controls;
-using Microsoft.Maui.DevFlow.Agent.Core;
-using LeXtudio.DevFlow.Agent.MewUI;
-
-var port = GetAgentPort();
-var statusLabel = new Label
-{
-    Text = "Starting DevFlow...",
-    Tag = "ResponseText"
-};
-
-var pressButton = new Button
-{
-    Tag = "ActionButton",
-    Content = new Label { Text = "Press me" }
-};
-pressButton.Click += () => statusLabel.Text = "Button pressed.";
-
-var window = new Window()
-    .Title("MewUI DevFlow App")
-    .Resizable(900, 700)
-    .Content(
-        new StackPanel()
-            .Padding(16)
-            .Spacing(12)
-            .Children(
-                new Label
-                {
-                    Text = "MewUI DevFlow Sample",
-                    FontSize = 24
-                },
-                pressButton,
-                statusLabel,
-                new Label { Text = $"Open http://localhost:{port}/api/v1/agent/status to verify DevFlow is running." }
-            )
-    )
-    .OnLoaded(() =>
-    {
-        var agent = Application.Current.AddMewUIDevFlowAgent(new AgentOptions { Port = port });
-        statusLabel.Text = $"DevFlow agent started on port {agent.Port}.";
-    });
-
-RegisterMewUIPlatformHost();
-
-try
-{
-    Application.Run(window);
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"[MewUIApp] Application.Run failed: {ex}");
-    throw;
-}
-
-static void RegisterMewUIPlatformHost()
-{
-    if (OperatingSystem.IsWindows())
-    {
-        TryRegisterPlatform("Aprillz.MewUI.Win32Platform, Aprillz.MewUI.Platform.Win32");
-        TryRegisterPlatform("Aprillz.MewUI.Direct2DBackend, Aprillz.MewUI.Backend.Direct2D");
-        return;
-    }
-
-    if (OperatingSystem.IsLinux())
-    {
-        TryRegisterPlatform("Aprillz.MewUI.X11Platform, Aprillz.MewUI.Platform.X11");
-        TryRegisterPlatform("Aprillz.MewUI.MewVGX11Backend, Aprillz.MewUI.Backend.MewVG.X11");
-        return;
-    }
-
-    if (OperatingSystem.IsMacOS())
-    {
-        TryRegisterPlatform("Aprillz.MewUI.MacOSPlatform, Aprillz.MewUI.Platform.MacOS");
-        TryRegisterPlatform("Aprillz.MewUI.MewVGMacOSBackend, Aprillz.MewUI.Backend.MewVG.MacOS");
-        return;
-    }
-
-    Console.WriteLine("[MewUIApp] No explicit MewUI platform host registration performed for this OS.");
-}
-
-static void TryRegisterPlatform(string typeName)
-{
-    var type = Type.GetType(typeName, throwOnError: false, ignoreCase: false);
-    if (type == null)
-    {
-        Console.WriteLine($"[MewUIApp] Platform registration type not found: {typeName}");
-        return;
-    }
-
-    var registerMethod = type.GetMethod("Register", BindingFlags.Public | BindingFlags.Static);
-    if (registerMethod == null)
-    {
-        Console.WriteLine($"[MewUIApp] Register method not found on {typeName}");
-        return;
-    }
-
-    registerMethod.Invoke(null, null);
-}
-
-static int GetAgentPort()
-{
-    var portValue = Environment.GetEnvironmentVariable("DEVFLOW_AGENT_PORT");
-    return int.TryParse(portValue, out var port) && port > 0 ? port : 5500;
-}
-""";
-        }
         private static int RunDotnetCommand(string arguments, OutputOptions options, string workingDirectory)
         {
             if (options.DryRun)
@@ -601,10 +357,36 @@ static int GetAgentPort()
             return process.ExitCode;
         }
 
+        private static string GetUnoProjectFile(string name)
+        {
+            return $"<Project Sdk=\"Microsoft.NET.Sdk\">\n" +
+                   "  <PropertyGroup>\n" +
+                   "    <OutputType>Exe</OutputType>\n" +
+                   "    <TargetFramework>net10.0</TargetFramework>\n" +
+                   "    <ImplicitUsings>enable</ImplicitUsings>\n" +
+                   "    <Nullable>enable</Nullable>\n" +
+                   $"    <RootNamespace>{name}</RootNamespace>\n" +
+                   "  </PropertyGroup>\n" +
+                   "</Project>\n";
+        }
+
+        private static string GetUnoProgramCode(string name)
+        {
+            return $"using System;\n\nnamespace {name}\n{{\n" +
+                   "    public static class Program\n" +
+                   "    {\n" +
+                   "        public static void Main()\n" +
+                   "        {\n" +
+                   "            Console.WriteLine(\"Hello, Uno! This is a lightweight Uno app scaffold.\");\n" +
+                   "        }\n" +
+                   "    }\n" +
+                   "}\n";
+        }
+
         private static int UnknownDevFlowSubcommand(string subcommand)
         {
             Console.Error.WriteLine($"Unknown devflow subcommand: {subcommand}");
-            Console.Error.WriteLine("Run 'dotnet mewlex devflow --help' for available commands.");
+            Console.Error.WriteLine("Run 'dotnet unolex devflow --help' for available commands.");
             return 1;
         }
 
