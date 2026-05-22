@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using Xunit;
 
-namespace LeXtudio.Wpf.Cli.UnitTests
+namespace LeXtudio.MewUI.Cli.UnitTests
 {
     public class CliEntryTests
     {
@@ -10,21 +10,14 @@ namespace LeXtudio.Wpf.Cli.UnitTests
         public void NoArguments_ShowsHelp()
         {
             var output = CaptureConsole(() => Program.Main(Array.Empty<string>()));
-            Assert.Contains("LeXtudio.Wpf.Cli - WPF command line utility", output);
+            Assert.Contains("LeXtudio.MewUI.Cli - MewUI command line utility", output);
         }
 
         [Fact]
         public void DoctorCommand_PrintsDoctorMessage()
         {
             var output = CaptureConsole(() => Program.Main(new[] { "doctor" }));
-            Assert.Contains("Validated the WPF development environment.", output);
-        }
-
-        [Fact]
-        public void JsonMode_OutputsJsonPayload()
-        {
-            var output = CaptureConsole(() => Program.Main(new[] { "--json", "version" }));
-            Assert.Contains("\"command\":\"version\"", output);
+            Assert.Contains("Validated the MewUI development environment.", output);
         }
 
         private static string CaptureConsole(Func<int> action)

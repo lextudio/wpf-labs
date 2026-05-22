@@ -2,6 +2,8 @@
   <Folder Name="/Cli/">
     <Project Path="Cli/src/LeXtudio.Wpf.Cli/LeXtudio.Wpf.Cli.csproj" />
     <Project Path="Cli/src/LeXtudio.Wpf.Cli.UnitTests/LeXtudio.Wpf.Cli.UnitTests.csproj" />
+    <Project Path="Cli/src/LeXtudio.MewUI.Cli/LeXtudio.MewUI.Cli.csproj" />
+    <Project Path="Cli/src/LeXtudio.MewUI.Cli.UnitTests/LeXtudio.MewUI.Cli.UnitTests.csproj" />
   </Folder>
   <Folder Name="/DevFlow/">
     <Project Path="DevFlow/LeXtudio.DevFlow.Driver/LeXtudio.DevFlow.Driver.csproj" />

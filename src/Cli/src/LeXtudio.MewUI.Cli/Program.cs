@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace LeXtudio.Wpf.Cli
+namespace LeXtudio.MewUI.Cli
 {
     public static class Program
     {
@@ -29,7 +29,6 @@ namespace LeXtudio.Wpf.Cli
             while (tokens.Count > 0)
             {
                 var token = tokens.Peek();
-
                 switch (token)
                 {
                     case "--json":
@@ -97,15 +96,15 @@ namespace LeXtudio.Wpf.Cli
         private static int UnknownCommand(string command)
         {
             Console.Error.WriteLine($"Unknown command: {command}");
-            Console.Error.WriteLine("Run 'dotnet wpflex --help' for available commands.");
+            Console.Error.WriteLine("Run 'dotnet mewui --help' for available commands.");
             return 1;
         }
 
         private static void ShowHelp()
         {
-            Console.WriteLine("LeXtudio.Wpf.Cli - WPF command line utility");
+            Console.WriteLine("LeXtudio.MewUI.Cli - MewUI command line utility");
             Console.WriteLine();
-            Console.WriteLine("Usage: dotnet wpflex [options] <command> [command-options]");
+            Console.WriteLine("Usage: dotnet mewui [options] <command> [command-options]");
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine("  --json      Emit structured JSON output");
@@ -115,16 +114,16 @@ namespace LeXtudio.Wpf.Cli
             Console.WriteLine("  --help, -h  Show help information");
             Console.WriteLine();
             Console.WriteLine("Commands:");
-            Console.WriteLine("  doctor       Validate the WPF development environment");
+            Console.WriteLine("  doctor       Validate the MewUI development environment");
             Console.WriteLine("  version      Display CLI and environment version information");
-            Console.WriteLine("  new          Scaffold a new WPF app or library");
-            Console.WriteLine("  build        Build a WPF project with WPF-aware defaults");
-            Console.WriteLine("  run          Run a WPF application");
-            Console.WriteLine("  publish      Publish a WPF application for deployment");
-            Console.WriteLine("  package      Package WPF output artifacts");
-            Console.WriteLine("  diagnostics  Run WPF-specific diagnostics and validation");
+            Console.WriteLine("  new          Scaffold a new MewUI app");
+            Console.WriteLine("  build        Build a MewUI project");
+            Console.WriteLine("  run          Run a MewUI application");
+            Console.WriteLine("  publish      Publish a MewUI application");
+            Console.WriteLine("  package      Package MewUI output artifacts");
+            Console.WriteLine("  diagnostics  Run MewUI diagnostics and validation");
             Console.WriteLine("  env          Inspect installed SDKs and tooling");
-            Console.WriteLine("  devflow      Query a running WPF DevFlow agent and inspect runtime state");
+            Console.WriteLine("  devflow      Query a running MewUI DevFlow agent and inspect runtime state");
             Console.WriteLine("    status     Show DevFlow agent status");
             Console.WriteLine("    screenshot Capture a screenshot from a running DevFlow agent");
             Console.WriteLine("    tap        Send a tap action to a running DevFlow agent");
