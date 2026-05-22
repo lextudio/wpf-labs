@@ -1,0 +1,72 @@
+# Adopt DevFlow in a MewUI Project
+
+This guide shows how to add DevFlow to an existing `Aprillz.MewUI` app.
+
+## 1. Prerequisites
+
+- .NET 10.0 or later (matching current package compatibility)
+- A MewUI app that already runs on your target OS
+
+## 2. Add NuGet packages
+
+From your app project folder:
+
+```powershell
+dotnet add package LeXtudio.DevFlow.Agent.MewUI
+dotnet add package LeXtudio.DevFlow.Driver
+```
+
+## 3. Ensure MewUI platform registration still happens first
+
+Keep your existing MewUI platform host registration (`Register()` calls for Win32/X11/macOS platform + backend). DevFlow depends on a running MewUI application context; it does not replace platform setup.
+
+## 4. Register DevFlow after app starts
+
+In your app startup flow (for example `OnLoaded` of the main window):
+
+```csharp
+using Aprillz.MewUI;
+using Microsoft.Maui.DevFlow.Agent.Core;
+using LeXtudio.DevFlow.Agent.MewUI;
+
+var agent = Application.Current.AddMewUIDevFlowAgent(new AgentOptions
+{
+    Port = 5500
+});
+```
+
+## 5. Build and run
+
+```powershell
+dotnet build
+dotnet run
+```
+
+## 6. Verify the agent
+
+```powershell
+Invoke-WebRequest http://localhost:5500/api/v1/agent/status | Select-Object -ExpandProperty Content
+```
+
+## 7. What to expect after adoption
+
+When your MewUI app is running, DevFlow hosts a local HTTP API that can:
+
+- expose agent status
+- expose live UI tree data
+- fetch a specific element by id
+- capture screenshots
+- perform tap and scroll actions
+
+Routes:
+
+- `GET /api/v1/agent/status`
+- `GET /api/v1/ui/tree`
+- `GET /api/v1/ui/element?id=<id>`
+- `GET /api/v1/ui/screenshot`
+- `POST /api/v1/ui/tap`
+- `POST /api/v1/ui/actions/scroll`
+
+## 8. Optional environment variable
+
+- `DEVFLOW_AGENT_PORT`: set a different port than `5500` for multi-app automation setups.
