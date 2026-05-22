@@ -4,6 +4,14 @@ A WPF-first DevFlow product designed for classic WPF applications.
 
 This folder contains the shared DevFlow runtime packages for WPF, WinUI 3, and Uno Platform applications.
 
+Each package has its own package-specific README for the most relevant installation and usage guidance:
+
+- `LeXtudio.DevFlow.Agent.Core/README.md`
+- `LeXtudio.DevFlow.Agent.WPF/README.md`
+- `LeXtudio.DevFlow.Agent.Uno/README.md`
+- `LeXtudio.DevFlow.Agent.MewUI/README.md`
+- `LeXtudio.DevFlow.Driver/README.md`
+
 ## NuGet packages
 
 [![LeXtudio.DevFlow.Agent.Core](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.Core.svg)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Core)
