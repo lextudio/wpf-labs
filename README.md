@@ -2,13 +2,13 @@
 
 This workspace contains the WPF DevFlow proof-of-concept and supporting tooling for the WPF tooling research project.
 
-## NuGet
+## NuGet packages
 
-[![LeXtudio.DevFlow.Agent.Core](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.Core.svg)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Core)
-[![LeXtudio.DevFlow.Agent.WPF](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.WPF.svg)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.WPF)
-[![LeXtudio.DevFlow.Agent.Uno](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.Uno.svg)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Uno)
-[![LeXtudio.DevFlow.Driver](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Driver.svg)](https://www.nuget.org/packages/LeXtudio.DevFlow.Driver)
-[![LeXtudio.Wpf.Cli](https://img.shields.io/nuget/v/LeXtudio.Wpf.Cli.svg)](https://www.nuget.org/packages/LeXtudio.Wpf.Cli)
+- [![LeXtudio.DevFlow.Agent.Core](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.Core.svg?label=LeXtudio.DevFlow.Agent.Core)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Core)
+- [![LeXtudio.DevFlow.Agent.WPF](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.WPF.svg?label=LeXtudio.DevFlow.Agent.WPF)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.WPF)
+- [![LeXtudio.DevFlow.Agent.Uno](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.Uno.svg?label=LeXtudio.DevFlow.Agent.Uno)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Uno)
+- [![LeXtudio.DevFlow.Driver](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Driver.svg?label=LeXtudio.DevFlow.Driver)](https://www.nuget.org/packages/LeXtudio.DevFlow.Driver)
+- [![LeXtudio.Wpf.Cli](https://img.shields.io/nuget/v/LeXtudio.Wpf.Cli.svg?label=LeXtudio.Wpf.Cli)](https://www.nuget.org/packages/LeXtudio.Wpf.Cli)
 
 ## Workspace structure
 
@@ -26,7 +26,7 @@ This workspace contains the WPF DevFlow proof-of-concept and supporting tooling 
 - Reuse shared DevFlow infrastructure where it makes sense, while keeping platform code in focused runtime packages.
 - Validate the approach with an end-to-end integration test and a live sample app.
 
-## How to use with WPF/WinUI 3/Uno Platform
+## How to use DevFlow with WPF/WinUI 3/Uno Platform
 
 ### Build all relevant projects
 
@@ -105,7 +105,7 @@ dotnet add package LeXtudio.DevFlow.Agent.Uno
 dotnet add package LeXtudio.DevFlow.Driver
 ```
 
-### Install WPF CLI tool
+## Install WPF CLI tool
 
 ```powershell
 dotnet tool install -g LeXtudio.Wpf.Cli
