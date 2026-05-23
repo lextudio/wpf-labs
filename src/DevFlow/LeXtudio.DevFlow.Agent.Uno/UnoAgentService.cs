@@ -142,6 +142,42 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         return TryFillAsync(elementId, string.Empty);
     }
 
+    protected override Task<object?> TryKeyAsync(string? elementId, string? key, string? text)
+    {
+        return InvokeOnUiThreadAsync(() =>
+        {
+            var keyValue = key ?? text ?? string.Empty;
+            var normalized = keyValue.Trim().ToLowerInvariant();
+            var insertText = text ?? (keyValue.Length == 1 ? keyValue : null);
+
+            if (string.IsNullOrWhiteSpace(elementId))
+                return (object?)new { success = true, key = keyValue, text, elementId };
+
+            var target = _treeWalker.FindElementObjectById(elementId);
+            if (target == null)
+                return null;
+
+            var current = ReadStringProperty(target, "Text") ?? ReadStringProperty(target, "Value") ?? string.Empty;
+
+            if (normalized is "backspace" or "delete")
+            {
+                var next = current.Length > 0 ? current[..^1] : string.Empty;
+                return TrySetTextValue(target, next) ? new { success = true, key = keyValue, text, elementId } : null;
+            }
+
+            if (normalized is "enter" or "return")
+                return new { success = true, key = keyValue, text, elementId };
+
+            if (!string.IsNullOrEmpty(insertText))
+            {
+                var next = current + insertText;
+                return TrySetTextValue(target, next) ? new { success = true, key = keyValue, text, elementId } : null;
+            }
+
+            return null;
+        });
+    }
+
     private static bool TrySetTextValue(object target, string text)
     {
         var type = target.GetType();
@@ -160,6 +196,12 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         }
 
         return false;
+    }
+
+    private static string? ReadStringProperty(object target, string propertyName)
+    {
+        var property = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+        return property?.PropertyType == typeof(string) ? property.GetValue(target) as string : null;
     }
 
     protected override Task<object?> SendWebViewCdpCommandAsync(string? contextId, string method, JsonElement? @params)

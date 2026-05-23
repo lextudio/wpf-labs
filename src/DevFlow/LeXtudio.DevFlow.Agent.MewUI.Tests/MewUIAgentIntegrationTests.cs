@@ -99,6 +99,24 @@ public class MewUIAgentIntegrationTests
         Assert.Equal(string.Empty, clearDoc.RootElement.GetProperty("text").GetString());
     }
 
+    [Fact]
+    public async Task KeyEnter_ReturnsSuccessPayload()
+    {
+        var runtimeIdentifier = GetRuntimeIdentifier();
+        var port = GetFreePort();
+        await using var host = await StartMewUIAgentHostAsync(port, runtimeIdentifier);
+
+        using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+        await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+        using var keyResponse = await client.PostAsync(
+            "/api/v1/ui/actions/key",
+            new StringContent("{\"elementId\":\"ResponseText\",\"key\":\"enter\"}", Encoding.UTF8, "application/json"));
+        keyResponse.EnsureSuccessStatusCode();
+        using var keyDoc = JsonDocument.Parse(await keyResponse.Content.ReadAsStreamAsync());
+        Assert.True(keyDoc.RootElement.GetProperty("success").GetBoolean());
+    }
+
     private static async Task<JsonElement> PollAgentStatusAsync(HttpClient client, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

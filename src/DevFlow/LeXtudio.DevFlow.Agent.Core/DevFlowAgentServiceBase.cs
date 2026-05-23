@@ -42,6 +42,7 @@ public abstract class DevFlowAgentServiceBase : IDisposable
     protected abstract Task<bool> TryScrollAsync(string elementId, double deltaX, double deltaY);
     protected abstract Task<bool> TryFillAsync(string elementId, string text);
     protected abstract Task<bool> TryClearAsync(string elementId);
+    protected abstract Task<object?> TryKeyAsync(string? elementId, string? key, string? text);
     protected abstract Task<string?> GetApplicationNameAsync();
     protected virtual object GetCapabilities() => new
     {
@@ -68,6 +69,7 @@ public abstract class DevFlowAgentServiceBase : IDisposable
         _server.MapPost("/api/v1/ui/tap", HandleTapAsync);
         _server.MapPost("/api/v1/ui/actions/fill", HandleFillAsync);
         _server.MapPost("/api/v1/ui/actions/clear", HandleClearAsync);
+        _server.MapPost("/api/v1/ui/actions/key", HandleKeyAsync);
         _server.MapPost("/api/v1/ui/actions/scroll", HandleScrollAsync);
     }
 
@@ -175,6 +177,16 @@ public abstract class DevFlowAgentServiceBase : IDisposable
         return result ? HttpResponse.Ok("Cleared") : HttpResponse.Error("Element does not accept text input", 404);
     }
 
+    private async Task<HttpResponse> HandleKeyAsync(HttpRequest request)
+    {
+        var payload = request.BodyAs<KeyRequest>();
+        if (payload == null || (string.IsNullOrWhiteSpace(payload.Key) && string.IsNullOrWhiteSpace(payload.Text)))
+            return HttpResponse.Error("key or text is required", 400);
+
+        var result = await TryKeyAsync(payload.ElementId, payload.Key, payload.Text).ConfigureAwait(false);
+        return result != null ? HttpResponse.Json(result) : HttpResponse.Error("Key action failed", 404);
+    }
+
     private sealed class TapRequest
     {
         public string? Id { get; set; }
@@ -196,6 +208,13 @@ public abstract class DevFlowAgentServiceBase : IDisposable
     private sealed class ActionRequest
     {
         public string? ElementId { get; set; }
+    }
+
+    private sealed class KeyRequest
+    {
+        public string? ElementId { get; set; }
+        public string? Key { get; set; }
+        public string? Text { get; set; }
     }
 
     private sealed class WebViewCdpRequest

@@ -370,6 +370,41 @@ public class UnoAgentIntegrationTests
         }
     }
 
+    [Theory]
+    [MemberData(nameof(UnoTestTargets))]
+    public async Task KeyEnter_ReturnsSuccessPayload(string targetFramework)
+    {
+        var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
+        var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
+        var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
+        BuildHostProject(hostProjectPath, targetFramework, hostProjectDirectory);
+        var exePath = GetHostExecutablePath(hostProjectDirectory, targetFramework);
+
+        var port = GetFreePort();
+        using var process = StartHiddenProcess(exePath, hostProjectDirectory, port);
+
+        try
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+            await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+            using var keyResponse = await client.PostAsync(
+                "/api/v1/ui/actions/key",
+                new StringContent("{\"elementId\":\"ResponseText\",\"key\":\"enter\"}", Encoding.UTF8, "application/json"));
+            keyResponse.EnsureSuccessStatusCode();
+            using var keyDoc = JsonDocument.Parse(await keyResponse.Content.ReadAsStreamAsync());
+            Assert.True(keyDoc.RootElement.GetProperty("success").GetBoolean());
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+                process.WaitForExit(5000);
+            }
+        }
+    }
+
     private static async Task<double> PollForScrollOffsetAsync(HttpClient client, string elementId, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

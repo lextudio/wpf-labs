@@ -6,6 +6,7 @@ using System.Windows;
 using Automation = System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Maui.DevFlow.Agent.Core;
@@ -141,6 +142,33 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
     protected override Task<bool> TryClearAsync(string elementId)
         => TryFillAsync(elementId, string.Empty);
 
+    protected override Task<object?> TryKeyAsync(string? elementId, string? key, string? text)
+    {
+        return Application.Current?.Dispatcher.InvokeAsync<object?>(() =>
+        {
+            var keyValue = key ?? text ?? string.Empty;
+            var normalized = keyValue.Trim().ToLowerInvariant();
+            var insertText = text ?? (keyValue.Length == 1 ? keyValue : null);
+
+            if (string.IsNullOrWhiteSpace(elementId))
+                return new { success = true, key = keyValue, text, elementId };
+
+            var element = _treeWalker.FindElementById(elementId);
+            var target = element == null ? null : _treeWalker.ResolveElementByStableId(element.Id);
+            if (target == null)
+                return null;
+
+            var ok = target switch
+            {
+                TextBox tb => ApplyTextBoxKey(tb, normalized, insertText),
+                PasswordBox pb => ApplyPasswordBoxKey(pb, normalized, insertText),
+                _ => false
+            };
+
+            return ok ? new { success = true, key = keyValue, text, elementId } : null;
+        }).Task ?? Task.FromResult<object?>(null);
+    }
+
     private static bool SetText(TextBox textBox, string text)
     {
         textBox.Text = text;
@@ -151,6 +179,52 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
     {
         passwordBox.Password = text;
         return true;
+    }
+
+    private static bool ApplyTextBoxKey(TextBox textBox, string normalizedKey, string? insertText)
+    {
+        if (normalizedKey is "enter" or "return")
+        {
+            textBox.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(textBox), 0, Key.Enter)
+            { RoutedEvent = Keyboard.KeyDownEvent });
+            return true;
+        }
+
+        if (normalizedKey is "backspace" or "delete")
+        {
+            if (!string.IsNullOrEmpty(textBox.Text))
+                textBox.Text = textBox.Text[..^1];
+            return true;
+        }
+
+        if (!string.IsNullOrEmpty(insertText))
+        {
+            textBox.Text += insertText;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool ApplyPasswordBoxKey(PasswordBox passwordBox, string normalizedKey, string? insertText)
+    {
+        if (normalizedKey is "backspace" or "delete")
+        {
+            if (!string.IsNullOrEmpty(passwordBox.Password))
+                passwordBox.Password = passwordBox.Password[..^1];
+            return true;
+        }
+
+        if (normalizedKey is "enter" or "return")
+            return true;
+
+        if (!string.IsNullOrEmpty(insertText))
+        {
+            passwordBox.Password += insertText;
+            return true;
+        }
+
+        return false;
     }
 
     private static ScrollViewer? FindScrollViewer(DependencyObject element)

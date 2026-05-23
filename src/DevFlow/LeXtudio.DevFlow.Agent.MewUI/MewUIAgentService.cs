@@ -139,6 +139,54 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
         return TryFillAsync(elementId, string.Empty);
     }
 
+    protected override Task<object?> TryKeyAsync(string? elementId, string? key, string? text)
+    {
+        if (!Application.IsRunning)
+            return Task.FromResult<object?>(null);
+
+        var app = Application.Current;
+        if (app == null)
+            return Task.FromResult<object?>(null);
+
+        object? result = null;
+        app.Dispatcher.Invoke(() =>
+        {
+            var keyValue = key ?? text ?? string.Empty;
+            var normalized = keyValue.Trim().ToLowerInvariant();
+            var insertText = text ?? (keyValue.Length == 1 ? keyValue : null);
+
+            if (string.IsNullOrWhiteSpace(elementId))
+            {
+                result = new { success = true, key = keyValue, text, elementId };
+                return;
+            }
+
+            var target = _treeWalker.FindElementObjectById(elementId);
+            if (target == null)
+                return;
+
+            var current = ReadStringProperty(target, "Text") ?? ReadStringProperty(target, "Value") ?? string.Empty;
+            if (normalized is "backspace" or "delete")
+            {
+                var next = current.Length > 0 ? current[..^1] : string.Empty;
+                if (TrySetTextValue(target, next))
+                    result = new { success = true, key = keyValue, text, elementId };
+                return;
+            }
+
+            if (normalized is "enter" or "return")
+            {
+                result = new { success = true, key = keyValue, text, elementId };
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(insertText) && TrySetTextValue(target, current + insertText))
+                result = new { success = true, key = keyValue, text, elementId };
+        });
+
+        return Task.FromResult(result);
+    }
+
     private static bool TrySetTextValue(object target, string text)
     {
         var type = target.GetType();
@@ -157,6 +205,12 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
         }
 
         return false;
+    }
+
+    private static string? ReadStringProperty(object target, string propertyName)
+    {
+        var property = target.GetType().GetProperty(propertyName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        return property?.PropertyType == typeof(string) ? property.GetValue(target) as string : null;
     }
 
     private bool TryTap(string elementId)
