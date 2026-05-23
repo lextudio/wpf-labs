@@ -121,6 +121,38 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
         }).Task ?? Task.FromResult(false);
     }
 
+    protected override Task<bool> TryFillAsync(string elementId, string text)
+    {
+        return Application.Current?.Dispatcher.InvokeAsync(() =>
+        {
+            var element = _treeWalker.FindElementById(elementId);
+            if (element == null) return false;
+
+            var target = _treeWalker.ResolveElementByStableId(element.Id);
+            return target switch
+            {
+                TextBox textBox => SetText(textBox, text),
+                PasswordBox passwordBox => SetPassword(passwordBox, text),
+                _ => false
+            };
+        }).Task ?? Task.FromResult(false);
+    }
+
+    protected override Task<bool> TryClearAsync(string elementId)
+        => TryFillAsync(elementId, string.Empty);
+
+    private static bool SetText(TextBox textBox, string text)
+    {
+        textBox.Text = text;
+        return true;
+    }
+
+    private static bool SetPassword(PasswordBox passwordBox, string text)
+    {
+        passwordBox.Password = text;
+        return true;
+    }
+
     private static ScrollViewer? FindScrollViewer(DependencyObject element)
     {
         if (element is ScrollViewer sv)

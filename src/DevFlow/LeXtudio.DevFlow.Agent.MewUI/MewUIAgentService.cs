@@ -116,6 +116,49 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
         return Task.FromResult(result);
     }
 
+    protected override Task<bool> TryFillAsync(string elementId, string text)
+    {
+        if (!Application.IsRunning)
+            return Task.FromResult(false);
+
+        var app = Application.Current;
+        if (app == null)
+            return Task.FromResult(false);
+
+        var result = false;
+        app.Dispatcher.Invoke(() =>
+        {
+            var target = _treeWalker.FindElementObjectById(elementId);
+            result = target != null && TrySetTextValue(target, text);
+        });
+        return Task.FromResult(result);
+    }
+
+    protected override Task<bool> TryClearAsync(string elementId)
+    {
+        return TryFillAsync(elementId, string.Empty);
+    }
+
+    private static bool TrySetTextValue(object target, string text)
+    {
+        var type = target.GetType();
+        var textProperty = type.GetProperty("Text", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        if (textProperty?.CanWrite == true && textProperty.PropertyType == typeof(string))
+        {
+            textProperty.SetValue(target, text);
+            return true;
+        }
+
+        var valueProperty = type.GetProperty("Value", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        if (valueProperty?.CanWrite == true && valueProperty.PropertyType == typeof(string))
+        {
+            valueProperty.SetValue(target, text);
+            return true;
+        }
+
+        return false;
+    }
+
     private bool TryTap(string elementId)
     {
         var target = _treeWalker.FindElementObjectById(elementId);

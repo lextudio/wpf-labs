@@ -68,6 +68,37 @@ public class MewUIAgentIntegrationTests
         Assert.True(IsPng(screenshotBytes));
     }
 
+    [Fact]
+    public async Task FillAndClear_UpdatesElementText()
+    {
+        var runtimeIdentifier = GetRuntimeIdentifier();
+        var port = GetFreePort();
+        await using var host = await StartMewUIAgentHostAsync(port, runtimeIdentifier);
+
+        using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+        await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+        using var fillResponse = await client.PostAsync(
+            "/api/v1/ui/actions/fill",
+            new StringContent("{\"elementId\":\"ResponseText\",\"text\":\"Filled by test\"}", Encoding.UTF8, "application/json"));
+        fillResponse.EnsureSuccessStatusCode();
+
+        using var afterFill = await client.GetAsync("/api/v1/ui/element?id=ResponseText");
+        afterFill.EnsureSuccessStatusCode();
+        using var fillDoc = JsonDocument.Parse(await afterFill.Content.ReadAsStreamAsync());
+        Assert.Equal("Filled by test", fillDoc.RootElement.GetProperty("text").GetString());
+
+        using var clearResponse = await client.PostAsync(
+            "/api/v1/ui/actions/clear",
+            new StringContent("{\"elementId\":\"ResponseText\"}", Encoding.UTF8, "application/json"));
+        clearResponse.EnsureSuccessStatusCode();
+
+        using var afterClear = await client.GetAsync("/api/v1/ui/element?id=ResponseText");
+        afterClear.EnsureSuccessStatusCode();
+        using var clearDoc = JsonDocument.Parse(await afterClear.Content.ReadAsStreamAsync());
+        Assert.Equal(string.Empty, clearDoc.RootElement.GetProperty("text").GetString());
+    }
+
     private static async Task<JsonElement> PollAgentStatusAsync(HttpClient client, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

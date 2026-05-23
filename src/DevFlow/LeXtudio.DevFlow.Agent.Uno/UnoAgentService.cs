@@ -125,6 +125,43 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         });
     }
 
+    protected override Task<bool> TryFillAsync(string elementId, string text)
+    {
+        return InvokeOnUiThreadAsync(() =>
+        {
+            var target = _treeWalker.FindElementObjectById(elementId);
+            if (target == null)
+                return false;
+
+            return TrySetTextValue(target, text);
+        });
+    }
+
+    protected override Task<bool> TryClearAsync(string elementId)
+    {
+        return TryFillAsync(elementId, string.Empty);
+    }
+
+    private static bool TrySetTextValue(object target, string text)
+    {
+        var type = target.GetType();
+        var textProperty = type.GetProperty("Text", BindingFlags.Public | BindingFlags.Instance);
+        if (textProperty?.CanWrite == true && textProperty.PropertyType == typeof(string))
+        {
+            textProperty.SetValue(target, text);
+            return true;
+        }
+
+        var valueProperty = type.GetProperty("Value", BindingFlags.Public | BindingFlags.Instance);
+        if (valueProperty?.CanWrite == true && valueProperty.PropertyType == typeof(string))
+        {
+            valueProperty.SetValue(target, text);
+            return true;
+        }
+
+        return false;
+    }
+
     protected override Task<object?> SendWebViewCdpCommandAsync(string? contextId, string method, JsonElement? @params)
     {
         return InvokeOnUiThreadAsync(() => SendWebViewCdpCommandOnUiThread(contextId, method, @params));
