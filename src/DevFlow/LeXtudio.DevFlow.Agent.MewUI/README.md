@@ -24,6 +24,12 @@ Register the MewUI DevFlow agent when your app starts.
 Application.Current.AddMewUIDevFlowAgent();
 ```
 
+## Getting Started
+
+For detailed setup and configuration instructions, see the [MewUI DevFlow Guide](https://github.com/lextudio/wpf-labs/blob/master/docs/devflow/howto-mewui.md).
+
+For common questions about port configuration and troubleshooting, see the [DevFlow FAQ](https://github.com/lextudio/wpf-labs/blob/master/docs/devflow/faq.md).
+
 ## Related Packages
 
 - [LeXtudio.DevFlow.Agent.Core](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Core)

@@ -26,6 +26,12 @@ using LeXtudio.DevFlow.Agent.Uno;
 builder.UseUnoDevFlowAgent();
 ```
 
+## Getting Started
+
+For detailed setup and configuration instructions, see the [Uno/WinUI 3 DevFlow Guide](https://github.com/lextudio/wpf-labs/blob/master/docs/devflow/howto-uno.md).
+
+For common questions about port configuration and troubleshooting, see the [DevFlow FAQ](https://github.com/lextudio/wpf-labs/blob/master/docs/devflow/faq.md).
+
 ## Related Packages
 
 - [LeXtudio.DevFlow.Agent.Core](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Core)
