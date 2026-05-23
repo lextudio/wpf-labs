@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Maui.DevFlow.Agent.Core;
 
@@ -34,6 +35,7 @@ public abstract class DevFlowAgentServiceBase : IDisposable
     protected abstract string FrameworkName { get; }
     protected abstract Task<List<ElementInfo>> BuildTreeAsync();
     protected abstract Task<ElementInfo?> FindElementAsync(string id);
+    protected abstract Task<List<ElementInfo>> QueryElementsAsync(string? type = null, string? automationId = null, string? text = null);
     protected abstract Task<byte[]?> CaptureScreenshotAsync(string? elementId = null, string? selector = null);
     protected virtual Task<object?> GetWebViewContextsAsync() => Task.FromResult<object?>(new { contexts = Array.Empty<object>() });
     protected virtual Task<byte[]?> CaptureWebViewScreenshotAsync(string? contextId = null) => Task.FromResult<byte[]?>(null);
@@ -42,7 +44,9 @@ public abstract class DevFlowAgentServiceBase : IDisposable
     protected abstract Task<bool> TryScrollAsync(string elementId, double deltaX, double deltaY);
     protected abstract Task<bool> TryFillAsync(string elementId, string text);
     protected abstract Task<bool> TryClearAsync(string elementId);
+    protected abstract Task<bool> TryFocusAsync(string elementId);
     protected abstract Task<object?> TryKeyAsync(string? elementId, string? key, string? text);
+    protected abstract Task<bool> TryBackAsync();
     protected abstract Task<string?> GetApplicationNameAsync();
     protected virtual object GetCapabilities() => new
     {
@@ -62,6 +66,7 @@ public abstract class DevFlowAgentServiceBase : IDisposable
         _server.MapGet("/api/v1/agent/status", HandleStatusAsync);
         _server.MapGet("/api/v1/ui/tree", HandleTreeAsync);
         _server.MapGet("/api/v1/ui/element", HandleElementAsync);
+        _server.MapGet("/api/v1/ui/elements", HandleQueryAsync);
         _server.MapGet("/api/v1/ui/screenshot", HandleScreenshotAsync);
         _server.MapGet("/api/v1/webview/contexts", HandleWebViewContextsAsync);
         _server.MapGet("/api/v1/webview/screenshot", HandleWebViewScreenshotAsync);
@@ -69,8 +74,13 @@ public abstract class DevFlowAgentServiceBase : IDisposable
         _server.MapPost("/api/v1/ui/tap", HandleTapAsync);
         _server.MapPost("/api/v1/ui/actions/fill", HandleFillAsync);
         _server.MapPost("/api/v1/ui/actions/clear", HandleClearAsync);
+        _server.MapPost("/api/v1/ui/actions/focus", HandleFocusAsync);
         _server.MapPost("/api/v1/ui/actions/key", HandleKeyAsync);
+        _server.MapPost("/api/v1/ui/actions/back", HandleBackAsync);
+        _server.MapPost("/api/v1/ui/actions/batch", HandleBatchAsync);
         _server.MapPost("/api/v1/ui/actions/scroll", HandleScrollAsync);
+        _server.MapGet("/api/v1/invoke/actions", HandleListInvokeActionsAsync);
+        _server.MapPost("/api/v1/invoke/actions/{name}", HandleInvokeActionAsync);
     }
 
     private async Task<HttpResponse> HandleStatusAsync(HttpRequest request)
@@ -102,6 +112,19 @@ public abstract class DevFlowAgentServiceBase : IDisposable
 
         var element = await FindElementAsync(id).ConfigureAwait(false);
         return element is null ? HttpResponse.NotFound($"Element '{id}' not found") : HttpResponse.Json(element);
+    }
+
+    private async Task<HttpResponse> HandleQueryAsync(HttpRequest request)
+    {
+        request.QueryParams.TryGetValue("type", out var type);
+        request.QueryParams.TryGetValue("automationId", out var automationId);
+        request.QueryParams.TryGetValue("text", out var text);
+
+        if (type == null && automationId == null && text == null)
+            return HttpResponse.Error("At least one query parameter required: type, automationId, text", 400);
+
+        var results = await QueryElementsAsync(type, automationId, text).ConfigureAwait(false);
+        return HttpResponse.Json(results);
     }
 
     private async Task<HttpResponse> HandleScreenshotAsync(HttpRequest request)
@@ -187,6 +210,74 @@ public abstract class DevFlowAgentServiceBase : IDisposable
         return result != null ? HttpResponse.Json(result) : HttpResponse.Error("Key action failed", 404);
     }
 
+    private async Task<HttpResponse> HandleFocusAsync(HttpRequest request)
+    {
+        var payload = request.BodyAs<ActionRequest>();
+        if (payload == null || string.IsNullOrWhiteSpace(payload.ElementId))
+            return HttpResponse.Error("elementId is required", 400);
+
+        var result = await TryFocusAsync(payload.ElementId).ConfigureAwait(false);
+        return result ? HttpResponse.Ok("Focused") : HttpResponse.Error("Element could not be focused", 404);
+    }
+
+    private async Task<HttpResponse> HandleBackAsync(HttpRequest request)
+    {
+        var result = await TryBackAsync().ConfigureAwait(false);
+        return result ? HttpResponse.Ok("Navigated back") : HttpResponse.Error("Back navigation failed", 404);
+    }
+
+    private async Task<HttpResponse> HandleBatchAsync(HttpRequest request)
+    {
+        var payload = request.BodyAs<BatchRequest>();
+        if (payload?.Actions == null || payload.Actions.Count == 0)
+            return HttpResponse.Error("actions are required", 400);
+
+        var results = new List<object>(payload.Actions.Count);
+        var allSucceeded = true;
+
+        foreach (var action in payload.Actions)
+        {
+            var actionName = (action.Action ?? action.Type ?? string.Empty).Trim().ToLowerInvariant();
+            HttpResponse response;
+
+            switch (actionName)
+            {
+                case "tap":
+                    response = await HandleTapAsync(new HttpRequest { Method = "POST", Body = JsonSerializer.Serialize(new TapRequest { Id = action.ElementId }) }).ConfigureAwait(false);
+                    break;
+                case "fill":
+                    response = await HandleFillAsync(new HttpRequest { Method = "POST", Body = JsonSerializer.Serialize(new FillRequest { ElementId = action.ElementId, Text = action.Text ?? string.Empty }) }).ConfigureAwait(false);
+                    break;
+                case "clear":
+                    response = await HandleClearAsync(new HttpRequest { Method = "POST", Body = JsonSerializer.Serialize(new ActionRequest { ElementId = action.ElementId }) }).ConfigureAwait(false);
+                    break;
+                case "focus":
+                    response = await HandleFocusAsync(new HttpRequest { Method = "POST", Body = JsonSerializer.Serialize(new ActionRequest { ElementId = action.ElementId }) }).ConfigureAwait(false);
+                    break;
+                case "scroll":
+                    response = await HandleScrollAsync(new HttpRequest { Method = "POST", Body = JsonSerializer.Serialize(new ScrollRequest { Id = action.ElementId, DeltaX = action.DeltaX, DeltaY = action.DeltaY }) }).ConfigureAwait(false);
+                    break;
+                case "back":
+                    response = await HandleBackAsync(new HttpRequest { Method = "POST" }).ConfigureAwait(false);
+                    break;
+                case "key":
+                    response = await HandleKeyAsync(new HttpRequest { Method = "POST", Body = JsonSerializer.Serialize(new KeyRequest { ElementId = action.ElementId, Key = action.Key, Text = action.Text }) }).ConfigureAwait(false);
+                    break;
+                default:
+                    response = HttpResponse.Error($"Unsupported batch action '{actionName}'", 400);
+                    break;
+            }
+
+            var succeeded = response.StatusCode < 400;
+            allSucceeded &= succeeded;
+            results.Add(new { action = actionName, success = succeeded, statusCode = response.StatusCode, response = response.Body });
+            if (!succeeded && !payload.ContinueOnError)
+                break;
+        }
+
+        return HttpResponse.Json(new { success = allSucceeded, results });
+    }
+
     private sealed class TapRequest
     {
         public string? Id { get; set; }
@@ -222,6 +313,187 @@ public abstract class DevFlowAgentServiceBase : IDisposable
         public string? Context { get; set; }
         public string? Method { get; set; }
         public JsonElement? Params { get; set; }
+    }
+
+    private sealed class BatchRequest
+    {
+        public bool ContinueOnError { get; set; }
+        public List<BatchActionRequest> Actions { get; set; } = [];
+    }
+
+    private sealed class BatchActionRequest
+    {
+        public string? Action { get; set; }
+        public string? Type { get; set; }
+        public string? ElementId { get; set; }
+        public string? Text { get; set; }
+        public string? Key { get; set; }
+        public double DeltaX { get; set; }
+        public double DeltaY { get; set; }
+    }
+
+    private sealed class InvokeActionEntry
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string DeclaringType { get; set; } = string.Empty;
+        public MethodInfo Method { get; set; } = null!;
+    }
+
+    private sealed class InvokeActionRequest
+    {
+        public JsonElement[]? Args { get; set; }
+    }
+
+    private static InvokeActionEntry[] DiscoverActions()
+    {
+        var actions = new List<InvokeActionEntry>();
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (asm.IsDynamic)
+                continue;
+
+            Type[] types;
+            try { types = asm.GetTypes(); } catch { continue; }
+
+            foreach (var type in types)
+            {
+                foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+                {
+                    var attr = method.GetCustomAttribute<DevFlowActionAttribute>();
+                    if (attr == null)
+                        continue;
+
+                    actions.Add(new InvokeActionEntry
+                    {
+                        Name = attr.Name,
+                        Description = attr.Description,
+                        DeclaringType = type.FullName ?? type.Name,
+                        Method = method
+                    });
+                }
+            }
+        }
+
+        return actions
+            .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToArray();
+    }
+
+    private static object? ConvertInvokeArg(Type targetType, JsonElement argElement)
+    {
+        var t = Nullable.GetUnderlyingType(targetType) ?? targetType;
+        if (argElement.ValueKind == JsonValueKind.Null)
+            return null;
+        if (t == typeof(string))
+            return argElement.GetString();
+        if (t == typeof(int))
+            return argElement.ValueKind == JsonValueKind.Number ? argElement.GetInt32() : int.Parse(argElement.GetString()!);
+        if (t == typeof(long))
+            return argElement.ValueKind == JsonValueKind.Number ? argElement.GetInt64() : long.Parse(argElement.GetString()!);
+        if (t == typeof(double))
+            return argElement.ValueKind == JsonValueKind.Number ? argElement.GetDouble() : double.Parse(argElement.GetString()!);
+        if (t == typeof(bool))
+            return argElement.ValueKind == JsonValueKind.True || argElement.ValueKind == JsonValueKind.False ? argElement.GetBoolean() : bool.Parse(argElement.GetString()!);
+        if (t.IsEnum)
+            return argElement.ValueKind == JsonValueKind.Number
+                ? Enum.ToObject(t, argElement.GetInt32())
+                : Enum.Parse(t, argElement.GetString()!, true);
+
+        throw new ArgumentException($"Cannot convert JSON {argElement.ValueKind} to {targetType.Name}");
+    }
+
+    private static object?[] ConvertInvokeArgs(ParameterInfo[] parameters, JsonElement[]? args)
+    {
+        var result = new object?[parameters.Length];
+        for (var i = 0; i < parameters.Length; i++)
+        {
+            if (args != null && i < args.Length)
+                result[i] = ConvertInvokeArg(parameters[i].ParameterType, args[i]);
+            else if (parameters[i].HasDefaultValue)
+                result[i] = parameters[i].DefaultValue;
+            else
+                throw new ArgumentException($"Missing required argument '{parameters[i].Name}' (parameter {i})");
+        }
+
+        return result;
+    }
+
+    private static async Task<(bool success, string? returnValue, string? returnType, string? error)> InvokeMethodAsync(MethodInfo method, object?[] args)
+    {
+        try
+        {
+            var result = method.Invoke(null, args);
+            if (result is Task task)
+            {
+                await task.ConfigureAwait(false);
+                if (task.GetType().IsGenericType)
+                {
+                    var value = task.GetType().GetProperty("Result")?.GetValue(task);
+                    return (true, value?.ToString(), task.GetType().GetGenericArguments()[0].Name, null);
+                }
+
+                return (true, null, "void", null);
+            }
+
+            if (method.ReturnType == typeof(void))
+                return (true, null, "void", null);
+
+            return (true, result?.ToString(), method.ReturnType.Name, null);
+        }
+        catch (TargetInvocationException tie)
+        {
+            var inner = tie.InnerException ?? tie;
+            return (false, null, null, $"{inner.GetType().Name}: {inner.Message}");
+        }
+        catch (Exception ex)
+        {
+            return (false, null, null, $"{ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private Task<HttpResponse> HandleListInvokeActionsAsync(HttpRequest request)
+    {
+        var actions = DiscoverActions();
+        var result = actions.Select(a => new
+        {
+            name = a.Name,
+            description = a.Description,
+            declaringType = a.DeclaringType,
+            parameters = a.Method.GetParameters().Select(p => new
+            {
+                name = p.Name,
+                type = p.ParameterType.Name,
+                isRequired = !p.HasDefaultValue
+            })
+        });
+
+        return Task.FromResult(HttpResponse.Json(new { actions = result }));
+    }
+
+    private async Task<HttpResponse> HandleInvokeActionAsync(HttpRequest request)
+    {
+        if (!request.RouteParams.TryGetValue("name", out var actionName) || string.IsNullOrWhiteSpace(actionName))
+            return HttpResponse.Error("Action name required", 400);
+
+        var action = Array.Find(DiscoverActions(), a => string.Equals(a.Name, actionName, StringComparison.OrdinalIgnoreCase));
+        if (action == null)
+            return HttpResponse.Error($"Action '{actionName}' not found. Use GET /api/v1/invoke/actions to list available actions.", 404);
+
+        try
+        {
+            var body = request.BodyAs<InvokeActionRequest>();
+            var args = ConvertInvokeArgs(action.Method.GetParameters(), body?.Args);
+            var (success, returnValue, returnType, error) = await InvokeMethodAsync(action.Method, args).ConfigureAwait(false);
+            return success
+                ? HttpResponse.Json(new { success = true, action = action.Name, returnValue, returnType })
+                : HttpResponse.Error($"Action '{actionName}' failed: {error}", 400);
+        }
+        catch (Exception ex)
+        {
+            return HttpResponse.Error($"Argument error: {ex.Message}", 400);
+        }
     }
 
     public void Dispose()

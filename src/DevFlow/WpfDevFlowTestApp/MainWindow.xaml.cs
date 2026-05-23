@@ -1,4 +1,5 @@
 using System.Windows;
+using LeXtudio.DevFlow.Agent.Core;
 using Microsoft.Web.WebView2.Core;
 
 namespace WpfDevFlowTestApp;
@@ -34,4 +35,7 @@ public partial class MainWindow : Window
     {
         ResponseText.Text = "Button clicked at " + System.DateTime.Now.ToLongTimeString();
     }
+
+    [DevFlowAction("wpf.echo", Description = "Echoes an input string for invoke API tests.")]
+    public static string Echo(string value) => $"echo:{value}";
 }

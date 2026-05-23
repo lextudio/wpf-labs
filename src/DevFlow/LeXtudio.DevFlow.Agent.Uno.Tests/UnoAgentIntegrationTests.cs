@@ -405,6 +405,130 @@ public class UnoAgentIntegrationTests
         }
     }
 
+    [Theory]
+    [MemberData(nameof(UnoTestTargets))]
+    public async Task Focus_ReturnsSuccess(string targetFramework)
+    {
+        var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
+        var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
+        var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
+        BuildHostProject(hostProjectPath, targetFramework, hostProjectDirectory);
+        var exePath = GetHostExecutablePath(hostProjectDirectory, targetFramework);
+
+        var port = GetFreePort();
+        using var process = StartHiddenProcess(exePath, hostProjectDirectory, port);
+        try
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+            await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+            using var focusResponse = await client.PostAsync(
+                "/api/v1/ui/actions/focus",
+                new StringContent("{\"elementId\":\"ActionButton\"}", Encoding.UTF8, "application/json"));
+            focusResponse.EnsureSuccessStatusCode();
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+                process.WaitForExit(5000);
+            }
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(UnoTestTargets))]
+    public async Task BatchActions_SucceedsForTapAndFill(string targetFramework)
+    {
+        var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
+        var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
+        var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
+        BuildHostProject(hostProjectPath, targetFramework, hostProjectDirectory);
+        var exePath = GetHostExecutablePath(hostProjectDirectory, targetFramework);
+
+        var port = GetFreePort();
+        using var process = StartHiddenProcess(exePath, hostProjectDirectory, port);
+        try
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+            await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+            const string body = """
+                                {
+                                  "actions": [
+                                    { "action": "tap", "elementId": "ActionButton" },
+                                    { "action": "fill", "elementId": "ResponseText", "text": "Batch updated" }
+                                  ]
+                                }
+                                """;
+
+            using var batchResponse = await client.PostAsync(
+                "/api/v1/ui/actions/batch",
+                new StringContent(body, Encoding.UTF8, "application/json"));
+            batchResponse.EnsureSuccessStatusCode();
+            using var batchDoc = JsonDocument.Parse(await batchResponse.Content.ReadAsStreamAsync());
+            Assert.True(batchDoc.RootElement.GetProperty("success").GetBoolean());
+            Assert.Equal(2, batchDoc.RootElement.GetProperty("results").GetArrayLength());
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+                process.WaitForExit(5000);
+            }
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(UnoDesktopOnlyTargets))]
+    public async Task InvokeApi_ListAndInvoke_Works(string targetFramework)
+    {
+        var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
+        var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
+        var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
+        BuildHostProject(hostProjectPath, targetFramework, hostProjectDirectory);
+        var exePath = GetHostExecutablePath(hostProjectDirectory, targetFramework);
+
+        var port = GetFreePort();
+        using var process = StartHiddenProcess(exePath, hostProjectDirectory, port);
+        try
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+            await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+            using var listResponse = await client.GetAsync("/api/v1/invoke/actions");
+            listResponse.EnsureSuccessStatusCode();
+            using var listDoc = JsonDocument.Parse(await listResponse.Content.ReadAsStreamAsync());
+            var hasAction = false;
+            foreach (var action in listDoc.RootElement.GetProperty("actions").EnumerateArray())
+            {
+                if (string.Equals(action.GetProperty("name").GetString(), "uno.echo", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasAction = true;
+                    break;
+                }
+            }
+            Assert.True(hasAction);
+
+            using var invokeResponse = await client.PostAsync(
+                "/api/v1/invoke/actions/uno.echo",
+                new StringContent("{\"args\":[\"hello\"]}", Encoding.UTF8, "application/json"));
+            invokeResponse.EnsureSuccessStatusCode();
+            using var invokeDoc = JsonDocument.Parse(await invokeResponse.Content.ReadAsStreamAsync());
+            Assert.True(invokeDoc.RootElement.GetProperty("success").GetBoolean());
+            Assert.Equal("echo:hello", invokeDoc.RootElement.GetProperty("returnValue").GetString());
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+                process.WaitForExit(5000);
+            }
+        }
+    }
+
     private static async Task<double> PollForScrollOffsetAsync(HttpClient client, string elementId, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

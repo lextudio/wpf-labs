@@ -74,6 +74,33 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
         return Task.FromResult(result);
     }
 
+    protected override Task<List<ElementInfo>> QueryElementsAsync(string? type = null, string? automationId = null, string? text = null)
+    {
+        if (!Application.IsRunning)
+            return Task.FromResult(new List<ElementInfo>());
+
+        var app = Application.Current;
+        if (app == null)
+            return Task.FromResult(new List<ElementInfo>());
+
+        List<ElementInfo> result = [];
+        app.Dispatcher.Invoke(() =>
+        {
+            var roots = _treeWalker.WalkTree();
+            var all = new List<ElementInfo>();
+            foreach (var root in roots)
+                Flatten(root, all);
+
+            result = all.Where(e =>
+                    (string.IsNullOrWhiteSpace(type) || string.Equals(e.Type, type, StringComparison.OrdinalIgnoreCase))
+                    && (string.IsNullOrWhiteSpace(automationId) || string.Equals(e.AutomationId, automationId, StringComparison.OrdinalIgnoreCase))
+                    && (string.IsNullOrWhiteSpace(text) || (e.Text?.Contains(text, StringComparison.OrdinalIgnoreCase) == true)))
+                .ToList();
+        });
+
+        return Task.FromResult(result);
+    }
+
     protected override Task<byte[]?> CaptureScreenshotAsync(string? elementId = null, string? selector = null)
     {
         if (!Application.IsRunning)
@@ -139,6 +166,36 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
         return TryFillAsync(elementId, string.Empty);
     }
 
+    protected override Task<bool> TryFocusAsync(string elementId)
+    {
+        if (!Application.IsRunning)
+            return Task.FromResult(false);
+
+        var app = Application.Current;
+        if (app == null)
+            return Task.FromResult(false);
+
+        var result = false;
+        app.Dispatcher.Invoke(() =>
+        {
+            var target = _treeWalker.FindElementObjectById(elementId);
+            if (target is Control control)
+            {
+                control.Focus();
+                result = true;
+                return;
+            }
+
+            var focusMethod = target?.GetType().GetMethod("Focus", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (focusMethod != null)
+            {
+                var focusResult = focusMethod.Invoke(target, null);
+                result = focusResult is bool focused ? focused : true;
+            }
+        });
+        return Task.FromResult(result);
+    }
+
     protected override Task<object?> TryKeyAsync(string? elementId, string? key, string? text)
     {
         if (!Application.IsRunning)
@@ -182,6 +239,30 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
 
             if (!string.IsNullOrEmpty(insertText) && TrySetTextValue(target, current + insertText))
                 result = new { success = true, key = keyValue, text, elementId };
+        });
+
+        return Task.FromResult(result);
+    }
+
+    protected override Task<bool> TryBackAsync()
+    {
+        if (!Application.IsRunning)
+            return Task.FromResult(false);
+
+        var app = Application.Current;
+        if (app == null)
+            return Task.FromResult(false);
+
+        var result = false;
+        app.Dispatcher.Invoke(() =>
+        {
+            var windows = app.AllWindows;
+            if (windows.Count > 1)
+            {
+                var top = windows[^1];
+                top.Close();
+                result = true;
+            }
         });
 
         return Task.FromResult(result);
@@ -288,6 +369,15 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
         }
 
         return true;
+    }
+
+    private static void Flatten(ElementInfo element, List<ElementInfo> list)
+    {
+        list.Add(element);
+        if (element.Children == null)
+            return;
+        foreach (var child in element.Children)
+            Flatten(child, list);
     }
 
     private static ScrollViewer? FindScrollViewer(object element)

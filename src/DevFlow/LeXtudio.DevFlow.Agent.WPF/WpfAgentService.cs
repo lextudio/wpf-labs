@@ -60,6 +60,23 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
                ?? Task.FromResult<Microsoft.Maui.DevFlow.Agent.Core.ElementInfo?>(null);
     }
 
+    protected override Task<List<ElementInfo>> QueryElementsAsync(string? type = null, string? automationId = null, string? text = null)
+    {
+        return Application.Current?.Dispatcher.InvokeAsync(() =>
+        {
+            var roots = _treeWalker.WalkTree();
+            var all = new List<ElementInfo>();
+            foreach (var root in roots)
+                Flatten(root, all);
+
+            return all.Where(e =>
+                    (string.IsNullOrWhiteSpace(type) || string.Equals(e.Type, type, StringComparison.OrdinalIgnoreCase))
+                    && (string.IsNullOrWhiteSpace(automationId) || string.Equals(e.AutomationId, automationId, StringComparison.OrdinalIgnoreCase))
+                    && (string.IsNullOrWhiteSpace(text) || ((e.Text?.Contains(text, StringComparison.OrdinalIgnoreCase) == true))))
+                .ToList();
+        }).Task ?? Task.FromResult(new List<ElementInfo>());
+    }
+
     protected override Task<byte[]?> CaptureScreenshotAsync(string? elementId = null, string? selector = null)
     {
         return Application.Current?.Dispatcher.InvokeAsync(() => CaptureScreenshotOnUiThread(elementId, selector)).Task
@@ -142,6 +159,22 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
     protected override Task<bool> TryClearAsync(string elementId)
         => TryFillAsync(elementId, string.Empty);
 
+    protected override Task<bool> TryFocusAsync(string elementId)
+    {
+        return Application.Current?.Dispatcher.InvokeAsync(() =>
+        {
+            var element = _treeWalker.FindElementById(elementId);
+            if (element == null) return false;
+            var target = _treeWalker.ResolveElementByStableId(element.Id);
+            return target switch
+            {
+                UIElement ui => ui.Focus(),
+                ContentElement ce => ce.Focus(),
+                _ => false
+            };
+        }).Task ?? Task.FromResult(false);
+    }
+
     protected override Task<object?> TryKeyAsync(string? elementId, string? key, string? text)
     {
         return Application.Current?.Dispatcher.InvokeAsync<object?>(() =>
@@ -169,10 +202,38 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
         }).Task ?? Task.FromResult<object?>(null);
     }
 
+    protected override Task<bool> TryBackAsync()
+    {
+        return Application.Current?.Dispatcher.InvokeAsync(() =>
+        {
+            var app = Application.Current;
+            if (app == null)
+                return false;
+
+            var active = app.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive);
+            if (active != null && active != app.MainWindow)
+            {
+                active.Close();
+                return true;
+            }
+
+            return false;
+        }).Task ?? Task.FromResult(false);
+    }
+
     private static bool SetText(TextBox textBox, string text)
     {
         textBox.Text = text;
         return true;
+    }
+
+    private static void Flatten(ElementInfo element, List<ElementInfo> list)
+    {
+        list.Add(element);
+        if (element.Children == null)
+            return;
+        foreach (var child in element.Children)
+            Flatten(child, list);
     }
 
     private static bool SetPassword(PasswordBox passwordBox, string text)

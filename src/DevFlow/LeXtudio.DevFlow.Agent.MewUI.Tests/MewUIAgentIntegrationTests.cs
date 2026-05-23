@@ -117,6 +117,50 @@ public class MewUIAgentIntegrationTests
         Assert.True(keyDoc.RootElement.GetProperty("success").GetBoolean());
     }
 
+    [Fact]
+    public async Task Focus_ReturnsSuccess()
+    {
+        var runtimeIdentifier = GetRuntimeIdentifier();
+        var port = GetFreePort();
+        await using var host = await StartMewUIAgentHostAsync(port, runtimeIdentifier);
+
+        using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+        await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+        using var focusResponse = await client.PostAsync(
+            "/api/v1/ui/actions/focus",
+            new StringContent("{\"elementId\":\"ActionButton\"}", Encoding.UTF8, "application/json"));
+        focusResponse.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task BatchActions_SucceedsForTapAndFill()
+    {
+        var runtimeIdentifier = GetRuntimeIdentifier();
+        var port = GetFreePort();
+        await using var host = await StartMewUIAgentHostAsync(port, runtimeIdentifier);
+
+        using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+        await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+        const string body = """
+                            {
+                              "actions": [
+                                { "action": "tap", "elementId": "ActionButton" },
+                                { "action": "fill", "elementId": "ResponseText", "text": "Batch updated" }
+                              ]
+                            }
+                            """;
+
+        using var batchResponse = await client.PostAsync(
+            "/api/v1/ui/actions/batch",
+            new StringContent(body, Encoding.UTF8, "application/json"));
+        batchResponse.EnsureSuccessStatusCode();
+        using var batchDoc = JsonDocument.Parse(await batchResponse.Content.ReadAsStreamAsync());
+        Assert.True(batchDoc.RootElement.GetProperty("success").GetBoolean());
+        Assert.Equal(2, batchDoc.RootElement.GetProperty("results").GetArrayLength());
+    }
+
     private static async Task<JsonElement> PollAgentStatusAsync(HttpClient client, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using LeXtudio.DevFlow.Agent.Core;
 
 namespace UnoDevFlowTestApp;
 
@@ -32,4 +33,7 @@ public sealed partial class MainPage : Page
     {
         ResponseText.Text = $"Button clicked at {System.DateTime.Now:T}";
     }
+
+    [DevFlowAction("uno.echo", Description = "Echoes an input string for invoke API tests.")]
+    public static string Echo(string value) => $"echo:{value}";
 }

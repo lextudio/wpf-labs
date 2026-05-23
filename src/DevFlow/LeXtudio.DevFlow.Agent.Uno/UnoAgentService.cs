@@ -80,6 +80,23 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         return InvokeOnUiThreadAsync(() => _treeWalker.FindElementById(id));
     }
 
+    protected override Task<List<ElementInfo>> QueryElementsAsync(string? type = null, string? automationId = null, string? text = null)
+    {
+        return InvokeOnUiThreadAsync(() =>
+        {
+            var roots = _treeWalker.WalkTree();
+            var all = new List<ElementInfo>();
+            foreach (var root in roots)
+                Flatten(root, all);
+
+            return all.Where(e =>
+                    (string.IsNullOrWhiteSpace(type) || string.Equals(e.Type, type, StringComparison.OrdinalIgnoreCase))
+                    && (string.IsNullOrWhiteSpace(automationId) || string.Equals(e.AutomationId, automationId, StringComparison.OrdinalIgnoreCase))
+                    && (string.IsNullOrWhiteSpace(text) || (e.Text?.Contains(text, StringComparison.OrdinalIgnoreCase) == true)))
+                .ToList();
+        });
+    }
+
     protected override Task<byte[]?> CaptureScreenshotAsync(string? elementId = null, string? selector = null)
     {
         return InvokeOnUiThreadAsync(() => CaptureScreenshotOnUiThreadAsync(elementId));
@@ -142,6 +159,23 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         return TryFillAsync(elementId, string.Empty);
     }
 
+    protected override Task<bool> TryFocusAsync(string elementId)
+    {
+        return InvokeOnUiThreadAsync(() =>
+        {
+            var target = _treeWalker.FindElementObjectById(elementId);
+            if (target == null)
+                return false;
+
+            var focusMethod = target.GetType().GetMethod("Focus", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (focusMethod == null)
+                return false;
+
+            var result = focusMethod.Invoke(target, null);
+            return result is bool focused ? focused : true;
+        });
+    }
+
     protected override Task<object?> TryKeyAsync(string? elementId, string? key, string? text)
     {
         return InvokeOnUiThreadAsync(() =>
@@ -178,6 +212,28 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         });
     }
 
+    protected override Task<bool> TryBackAsync()
+    {
+        return InvokeOnUiThreadAsync(() =>
+        {
+            var root = GetRootVisual();
+            if (root == null)
+                return false;
+
+            var frame = FindAncestorOrSelfByTypeName(root, "Frame");
+            if (frame == null)
+                return false;
+
+            var canGoBack = frame.GetType().GetProperty("CanGoBack", BindingFlags.Public | BindingFlags.Instance)?.GetValue(frame) as bool?;
+            if (canGoBack != true)
+                return false;
+
+            var goBack = frame.GetType().GetMethod("GoBack", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            goBack?.Invoke(frame, null);
+            return true;
+        });
+    }
+
     private static bool TrySetTextValue(object target, string text)
     {
         var type = target.GetType();
@@ -202,6 +258,29 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
     {
         var property = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
         return property?.PropertyType == typeof(string) ? property.GetValue(target) as string : null;
+    }
+
+    private static object? FindAncestorOrSelfByTypeName(object start, string typeName)
+    {
+        var current = start;
+        while (current != null)
+        {
+            if (string.Equals(current.GetType().Name, typeName, StringComparison.Ordinal))
+                return current;
+
+            current = GetPropertyValue(current, "Parent");
+        }
+
+        return null;
+    }
+
+    private static void Flatten(ElementInfo element, List<ElementInfo> list)
+    {
+        list.Add(element);
+        if (element.Children == null)
+            return;
+        foreach (var child in element.Children)
+            Flatten(child, list);
     }
 
     protected override Task<object?> SendWebViewCdpCommandAsync(string? contextId, string method, JsonElement? @params)

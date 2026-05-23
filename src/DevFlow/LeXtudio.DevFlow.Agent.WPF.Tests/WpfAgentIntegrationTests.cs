@@ -195,6 +195,56 @@ public class WpfAgentIntegrationTests
         Assert.Equal("missing_query_parameter", doc.RootElement.GetProperty("error").GetProperty("code").GetString());
     }
 
+    [Fact]
+    public async Task InvokeApi_ListAndInvoke_Works()
+    {
+        var port = GetFreePort();
+        await using var host = await StartWpfAgentHostAsync(port);
+        using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+        await PollAgentStatusAsync(client, TimeSpan.FromSeconds(15));
+
+        using var listResponse = await client.GetAsync("/api/v1/invoke/actions");
+        listResponse.EnsureSuccessStatusCode();
+        using var listDoc = JsonDocument.Parse(await listResponse.Content.ReadAsStreamAsync());
+        var actions = listDoc.RootElement.GetProperty("actions").EnumerateArray().ToArray();
+        Assert.Contains(actions, a => string.Equals(a.GetProperty("name").GetString(), "wpf.echo", StringComparison.OrdinalIgnoreCase));
+
+        using var invokeResponse = await client.PostAsync(
+            "/api/v1/invoke/actions/wpf.echo",
+            new StringContent("{\"args\":[\"hello\"]}", Encoding.UTF8, "application/json"));
+        invokeResponse.EnsureSuccessStatusCode();
+        using var invokeDoc = JsonDocument.Parse(await invokeResponse.Content.ReadAsStreamAsync());
+        Assert.True(invokeDoc.RootElement.GetProperty("success").GetBoolean());
+        Assert.Equal("echo:hello", invokeDoc.RootElement.GetProperty("returnValue").GetString());
+    }
+
+    [Fact]
+    public async Task BatchActions_SucceedsForTapAndScroll()
+    {
+        var port = GetFreePort();
+        await using var host = await StartWpfAgentHostAsync(port);
+
+        using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+        await PollAgentStatusAsync(client, TimeSpan.FromSeconds(15));
+
+        const string body = """
+                            {
+                              "actions": [
+                                { "action": "tap", "elementId": "ActionButton" },
+                                { "action": "scroll", "elementId": "MainScrollViewer", "deltaY": 120 }
+                              ]
+                            }
+                            """;
+
+        using var batchResponse = await client.PostAsync(
+            "/api/v1/ui/actions/batch",
+            new StringContent(body, Encoding.UTF8, "application/json"));
+        batchResponse.EnsureSuccessStatusCode();
+        using var batchDoc = JsonDocument.Parse(await batchResponse.Content.ReadAsStreamAsync());
+        Assert.True(batchDoc.RootElement.GetProperty("success").GetBoolean());
+        Assert.Equal(2, batchDoc.RootElement.GetProperty("results").GetArrayLength());
+    }
+
     private static async Task<JsonElement> PollAgentStatusAsync(HttpClient client, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
