@@ -9,21 +9,21 @@ cd src\DevFlow\WpfDevFlowTestApp
 dotnet run
 ```
 
-The app starts a DevFlow agent on port `5500`.
+The app starts a DevFlow agent on port `9223`.
 
 ## DevFlow endpoints
 
-- `GET http://localhost:5500/api/v1/agent/status`
-- `GET http://localhost:5500/api/v1/ui/tree`
-- `GET http://localhost:5500/api/v1/ui/element?id=<id>`
-- `GET http://localhost:5500/api/v1/ui/screenshot`
-- `POST http://localhost:5500/api/v1/ui/tap` with JSON body `{ "id": "<element-id>" }`
-- `POST http://localhost:5500/api/v1/ui/actions/scroll` with JSON body `{ "id": "<element-id>", "deltaX": 0, "deltaY": 600 }`
+- `GET http://localhost:9223/api/v1/agent/status`
+- `GET http://localhost:9223/api/v1/ui/tree`
+- `GET http://localhost:9223/api/v1/ui/element?id=<id>`
+- `GET http://localhost:9223/api/v1/ui/screenshot`
+- `POST http://localhost:9223/api/v1/ui/tap` with JSON body `{ "id": "<element-id>" }`
+- `POST http://localhost:9223/api/v1/ui/actions/scroll` with JSON body `{ "id": "<element-id>", "deltaX": 0, "deltaY": 600 }`
 
 ## Example status request
 
 ```powershell
-Invoke-WebRequest http://localhost:5500/api/v1/agent/status | Select-Object -ExpandProperty Content
+Invoke-WebRequest http://localhost:9223/api/v1/agent/status | Select-Object -ExpandProperty Content
 ```
 
 ## Example scroll request
@@ -31,7 +31,7 @@ Invoke-WebRequest http://localhost:5500/api/v1/agent/status | Select-Object -Exp
 ```powershell
 Invoke-RestMethod `
   -Method Post `
-  -Uri http://localhost:5500/api/v1/ui/actions/scroll `
+  -Uri http://localhost:9223/api/v1/ui/actions/scroll `
   -ContentType application/json `
   -Body '{ "id": "<element-id>", "deltaX": 0, "deltaY": 600 }'
 ```

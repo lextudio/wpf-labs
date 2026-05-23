@@ -39,14 +39,7 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        var port = 5500;
-        var portValue = Environment.GetEnvironmentVariable("DEVFLOW_AGENT_PORT");
-        if (!string.IsNullOrWhiteSpace(portValue) && int.TryParse(portValue, out var parsedPort))
-        {
-            port = parsedPort;
-        }
-
-        _devFlowService = this.AddWpfDevFlowAgent(new AgentOptions { Port = port });
+        _devFlowService = this.AddWpfDevFlowAgent();
     }
 }
 ```
@@ -65,10 +58,10 @@ dotnet run
 Check status:
 
 ```powershell
-Invoke-WebRequest http://localhost:5500/api/v1/agent/status | Select-Object -ExpandProperty Content
+Invoke-WebRequest http://localhost:9223/api/v1/agent/status | Select-Object -ExpandProperty Content
 ```
 
-If you used a custom port, replace `5500`.
+If you configured a custom port, replace `9223`.
 
 ## 6. What to expect after adoption
 
@@ -83,7 +76,21 @@ After startup, your app hosts a local DevFlow HTTP agent with these endpoints:
 
 Practically, this means tooling can inspect the live UI tree, capture screenshots, and drive supported UI actions through HTTP while your app is running.
 
-## 7. Optional environment variables
+## 7. Optional port configuration
 
-- `DEVFLOW_AGENT_PORT`: override default port (`5500`)
-- `DEVFLOW_HIDE_WINDOW`: for automation scenarios, hides the main window when set to `true`
+- `MauiDevFlowPort`: override the agent port at build time with `dotnet build -p:MauiDevFlowPort=5600`.
+- `.mauidevflow`: create a file in the project directory with:
+
+```json
+{
+  "port": 5600
+}
+```
+
+- `DEVFLOW_HIDE_WINDOW`: for automation scenarios, hides the main window when set to `true`.
+
+The agent defaults to port `5500` when no custom port is configured.
+
+## 8. Recommended practice
+
+Like MAUI onboarding guidance, keep DevFlow registration in debug-only code unless you explicitly need it in non-debug runs.

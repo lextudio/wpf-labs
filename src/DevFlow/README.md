@@ -75,7 +75,8 @@ builder.UseUnoDevFlowAgent();
 
 ## Web API
 
-By default, the sample apps start the agent on port `5500`.
+By default, the sample apps start the agent on port `9223`.
+You can override the port at build time with `dotnet build -p:MauiDevFlowPort=9500` or by adding a `.mauidevflow` file to your project directory.
 
 | Request | Description |
 |---------|-------------|

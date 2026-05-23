@@ -29,10 +29,7 @@ using Microsoft.Maui.DevFlow.Agent.Core;
 using LeXtudio.DevFlow.Agent.Uno;
 
 // Example in startup path where Application is available:
-var service = Application.Current.AddUnoDevFlowAgent(new AgentOptions
-{
-    Port = 5500
-});
+var service = Application.Current.AddUnoDevFlowAgent();
 ```
 
 If you do not pass `AgentOptions`, default settings are used.
@@ -71,6 +68,19 @@ API routes:
 - `POST /api/v1/ui/tap`
 - `POST /api/v1/ui/actions/scroll`
 
-## 7. Recommended practice
+## 7. Optional port configuration
+
+- `MauiDevFlowPort`: override the agent port at build time with `dotnet build -p:MauiDevFlowPort=9500`.
+- `.mauidevflow`: create a file in the project directory with:
+
+```json
+{
+  "port": 9500
+}
+```
+
+The agent defaults to port `9223` when no custom port is configured.
+
+## 8. Recommended practice
 
 Like MAUI onboarding guidance, keep DevFlow registration in debug-only code unless you explicitly need it in non-debug runs.

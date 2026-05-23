@@ -29,10 +29,7 @@ using Aprillz.MewUI;
 using Microsoft.Maui.DevFlow.Agent.Core;
 using LeXtudio.DevFlow.Agent.MewUI;
 
-var agent = Application.Current.AddMewUIDevFlowAgent(new AgentOptions
-{
-    Port = 5500
-});
+var agent = Application.Current.AddMewUIDevFlowAgent();
 ```
 
 ## 5. Build and run
@@ -67,6 +64,19 @@ Routes:
 - `POST /api/v1/ui/tap`
 - `POST /api/v1/ui/actions/scroll`
 
-## 8. Optional environment variable
+## 8. Optional port configuration
 
-- `DEVFLOW_AGENT_PORT`: set a different port than `5500` for multi-app automation setups.
+- `MauiDevFlowPort`: override the agent port at build time with `dotnet build -p:MauiDevFlowPort=9500`.
+- `.mauidevflow`: create a file in the project directory with:
+
+```json
+{
+  "port": 9500
+}
+```
+
+The agent defaults to port `9223` when no custom port is configured.
+
+## 9. Recommended practice
+
+Like MAUI onboarding guidance, keep DevFlow registration in debug-only code unless you explicitly need it in non-debug runs.

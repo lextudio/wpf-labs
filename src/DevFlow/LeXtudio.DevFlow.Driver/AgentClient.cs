@@ -14,7 +14,7 @@ public sealed class AgentClient : IDisposable
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    public AgentClient(string host = "localhost", int port = 5500)
+    public AgentClient(string host = "localhost", int port = 9223)
     {
         _baseUrl = $"http://{host}:{port}";
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };

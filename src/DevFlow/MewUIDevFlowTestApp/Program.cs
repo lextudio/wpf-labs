@@ -106,5 +106,10 @@ static void TryRegisterPlatform(string typeName)
 static int GetAgentPort()
 {
     var portValue = Environment.GetEnvironmentVariable("DEVFLOW_AGENT_PORT");
-    return int.TryParse(portValue, out var port) && port > 0 ? port : 5500;
+    if (int.TryParse(portValue, out var port) && port > 0)
+    {
+        return port;
+    }
+
+    return LeXtudio.DevFlow.Agent.Core.DevFlowAgentPortResolver.GetPortFromAssemblyMetadata() ?? Microsoft.Maui.DevFlow.Agent.Core.AgentOptions.DefaultPort;
 }

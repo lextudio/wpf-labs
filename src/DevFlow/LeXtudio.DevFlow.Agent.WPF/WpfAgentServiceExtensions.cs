@@ -8,6 +8,9 @@ public static class WpfAgentServiceExtensions
 {
     public static WpfAgentService AddWpfDevFlowAgent(this Application app, AgentOptions? options = null)
     {
+        options ??= new AgentOptions();
+        DevFlowAgentPortResolver.ApplyDefaultPort(options);
+
         var service = new WpfAgentService(options);
         service.Start();
 

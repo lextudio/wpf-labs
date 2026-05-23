@@ -8,6 +8,9 @@ public static class MewUIAgentServiceExtensions
 {
     public static MewUIAgentService AddMewUIDevFlowAgent(this Application app, AgentOptions? options = null)
     {
+        options ??= new AgentOptions();
+        DevFlowAgentPortResolver.ApplyDefaultPort(options);
+
         var service = new MewUIAgentService(options);
         service.Start();
         return service;

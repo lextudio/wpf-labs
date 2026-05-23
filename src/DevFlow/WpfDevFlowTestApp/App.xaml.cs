@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using Microsoft.Maui.DevFlow.Agent.Core;
+using LeXtudio.DevFlow.Agent.Core;
 using LeXtudio.DevFlow.Agent.WPF;
 
 namespace WpfDevFlowTestApp;
@@ -13,13 +14,7 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        var port = 5500;
-        var portValue = Environment.GetEnvironmentVariable("DEVFLOW_AGENT_PORT");
-        if (!string.IsNullOrWhiteSpace(portValue) && int.TryParse(portValue, out var parsedPort))
-        {
-            port = parsedPort;
-        }
-
+        var port = GetAgentPort();
         _devFlowService = this.AddWpfDevFlowAgent(new AgentOptions
         {
             Port = port
@@ -37,5 +32,16 @@ public partial class App : Application
             MainWindow.Visibility = Visibility.Hidden;
             MainWindow.ShowInTaskbar = false;
         }
+    }
+
+    private static int GetAgentPort()
+    {
+        var portValue = Environment.GetEnvironmentVariable("DEVFLOW_AGENT_PORT");
+        if (int.TryParse(portValue, out var parsedPort) && parsedPort > 0)
+        {
+            return parsedPort;
+        }
+
+        return DevFlowAgentPortResolver.GetPortFromAssemblyMetadata() ?? AgentOptions.DefaultPort;
     }
 }

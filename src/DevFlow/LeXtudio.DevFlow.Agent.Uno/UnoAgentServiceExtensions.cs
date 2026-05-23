@@ -8,6 +8,9 @@ public static class UnoAgentServiceExtensions
 {
     public static UnoAgentService AddUnoDevFlowAgent(this Application app, AgentOptions? options = null)
     {
+        options ??= new AgentOptions();
+        DevFlowAgentPortResolver.ApplyDefaultPort(options);
+
         var service = new UnoAgentService(options);
         service.Start();
         return service;

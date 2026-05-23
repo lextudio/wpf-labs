@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using LeXtudio.DevFlow.Agent.Core;
 using LeXtudio.DevFlow.Agent.Uno;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.DevFlow.Agent.Core;
@@ -56,12 +57,7 @@ public partial class App : Application
 
         MainWindow.SetWindowIcon();
 
-        var agentPort = AgentOptions.DefaultPort;
-        var portValue = Environment.GetEnvironmentVariable("DEVFLOW_AGENT_PORT");
-        if (int.TryParse(portValue, out var parsedPort))
-        {
-            agentPort = parsedPort;
-        }
+        var agentPort = GetAgentPort();
 
         var configuredLogDirectory = Environment.GetEnvironmentVariable("DEVFLOW_LOG_DIR");
         var logDirectory = string.IsNullOrWhiteSpace(configuredLogDirectory)
@@ -75,6 +71,17 @@ public partial class App : Application
 
         _agent = new UnoAgentService(new AgentOptions { Port = agentPort });
         _agent.Start();
+
+        int GetAgentPort()
+        {
+            var portValue = Environment.GetEnvironmentVariable("DEVFLOW_AGENT_PORT");
+            if (int.TryParse(portValue, out var parsedPort) && parsedPort > 0)
+            {
+                return parsedPort;
+            }
+
+            return DevFlowAgentPortResolver.GetPortFromAssemblyMetadata() ?? AgentOptions.DefaultPort;
+        }
 
         // WinUI does not complete layout/rendering until the window is activated.
         // The integration tests can still run with a hidden process window, but the
