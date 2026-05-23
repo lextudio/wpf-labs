@@ -13,6 +13,10 @@ A command-line tool for MewUI application workflows, project scaffolding, and De
 dotnet tool install -g LeXtudio.MewUI.Cli
 ```
 
+## Documentation
+
+- [MewUI CLI Guide](https://github.com/lextudio/wpf-labs/blob/master/docs/cli/mewui-cli.md)
+
 ## Quick Start
 
 ```powershell
@@ -50,13 +54,13 @@ dotnet mewlex run
 ## DevFlow Commands
 
 ```powershell
-dotnet mewlex devflow status --host localhost --port 5500
+dotnet mewlex devflow status --host localhost --port 9223
 ```
 
 Capture a screenshot:
 
 ```powershell
-dotnet mewlex devflow screenshot --host localhost --port 5500 --output screenshot.png
+dotnet mewlex devflow screenshot --host localhost --port 9223 --output screenshot.png
 ```
 
 Use `--json` to script responses:

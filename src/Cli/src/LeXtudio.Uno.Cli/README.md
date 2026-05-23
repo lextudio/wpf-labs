@@ -13,6 +13,10 @@ A command-line tool for Uno development environment workflows, project scaffoldi
 dotnet tool install -g LeXtudio.Uno.Cli
 ```
 
+## Documentation
+
+- [Uno CLI Guide](https://github.com/lextudio/wpf-labs/blob/master/docs/cli/uno-cli.md)
+
 ## Quick Start
 
 ```powershell
@@ -50,13 +54,13 @@ dotnet unolex run
 ## DevFlow Commands
 
 ```powershell
-dotnet unolex devflow status --host localhost --port 5500
+dotnet unolex devflow status --host localhost --port 9223
 ```
 
 Capture a screenshot:
 
 ```powershell
-dotnet unolex devflow screenshot --host localhost --port 5500 --output screenshot.png
+dotnet unolex devflow screenshot --host localhost --port 9223 --output screenshot.png
 ```
 
 ## Output and Automation

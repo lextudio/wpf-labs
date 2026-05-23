@@ -13,6 +13,10 @@ A command-line tool for WPF project workflows, diagnostics, packaging, and DevFl
 dotnet tool install -g LeXtudio.Wpf.Cli
 ```
 
+## Documentation
+
+- [WPF CLI Guide](https://github.com/lextudio/wpf-labs/blob/master/docs/cli/wpf-cli.md)
+
 ## Quick Start
 
 ```powershell
@@ -51,7 +55,7 @@ dotnet wpflex run
 Query a running WPF DevFlow agent:
 
 ```powershell
-dotnet wpflex devflow status --host localhost --port 5500
+dotnet wpflex devflow status --host localhost --port 9223
 ```
 
 Use `--json` for scripting:
