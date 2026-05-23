@@ -51,6 +51,34 @@ public sealed class AgentClient : IDisposable
         return response.IsSuccessStatusCode;
     }
 
+    public async Task<JsonElement?> GetWebViewContextsAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync(new Uri(_baseUrl + "/api/v1/webview/contexts"), cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken).ConfigureAwait(false);
+        return document.RootElement.Clone();
+    }
+
+    public async Task<byte[]?> GetWebViewScreenshotAsync(string? contextId = null, CancellationToken cancellationToken = default)
+    {
+        var path = "/api/v1/webview/screenshot";
+        if (!string.IsNullOrWhiteSpace(contextId))
+            path += "?context=" + Uri.EscapeDataString(contextId);
+        using var response = await _http.GetAsync(new Uri(_baseUrl + path), cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+            return null;
+        return await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<JsonElement?> SendWebViewCdpCommandAsync(string method, JsonElement? @params = null, string? contextId = null, CancellationToken cancellationToken = default)
+    {
+        var payload = JsonContent.Create(new { context = contextId, method, @params }, options: _jsonOptions);
+        using var response = await _http.PostAsync(new Uri(_baseUrl + "/api/v1/webview/cdp"), payload, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken).ConfigureAwait(false);
+        return document.RootElement.Clone();
+    }
+
     public void Dispose() => _http.Dispose();
 
     private async Task<T?> GetAsync<T>(string path, CancellationToken cancellationToken)

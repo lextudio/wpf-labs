@@ -35,6 +35,9 @@ public abstract class DevFlowAgentServiceBase : IDisposable
     protected abstract Task<List<ElementInfo>> BuildTreeAsync();
     protected abstract Task<ElementInfo?> FindElementAsync(string id);
     protected abstract Task<byte[]?> CaptureScreenshotAsync(string? elementId = null);
+    protected virtual Task<object?> GetWebViewContextsAsync() => Task.FromResult<object?>(new { contexts = Array.Empty<object>() });
+    protected virtual Task<byte[]?> CaptureWebViewScreenshotAsync(string? contextId = null) => Task.FromResult<byte[]?>(null);
+    protected virtual Task<object?> SendWebViewCdpCommandAsync(string? contextId, string method, JsonElement? @params) => Task.FromResult<object?>(null);
     protected abstract Task<bool> TryTapAsync(string elementId);
     protected abstract Task<bool> TryScrollAsync(string elementId, double deltaX, double deltaY);
     protected abstract Task<string?> GetApplicationNameAsync();
@@ -54,6 +57,9 @@ public abstract class DevFlowAgentServiceBase : IDisposable
         _server.MapGet("/api/v1/ui/tree", HandleTreeAsync);
         _server.MapGet("/api/v1/ui/element", HandleElementAsync);
         _server.MapGet("/api/v1/ui/screenshot", HandleScreenshotAsync);
+        _server.MapGet("/api/v1/webview/contexts", HandleWebViewContextsAsync);
+        _server.MapGet("/api/v1/webview/screenshot", HandleWebViewScreenshotAsync);
+        _server.MapPost("/api/v1/webview/cdp", HandleWebViewCdpAsync);
         _server.MapPost("/api/v1/ui/tap", HandleTapAsync);
         _server.MapPost("/api/v1/ui/actions/scroll", HandleScrollAsync);
     }
@@ -96,6 +102,29 @@ public abstract class DevFlowAgentServiceBase : IDisposable
         return bytes != null ? HttpResponse.Png(bytes) : HttpResponse.Error("Screenshot capture failed", 500);
     }
 
+    private async Task<HttpResponse> HandleWebViewContextsAsync(HttpRequest request)
+    {
+        var contexts = await GetWebViewContextsAsync().ConfigureAwait(false);
+        return HttpResponse.Json(contexts ?? new { contexts = Array.Empty<object>() });
+    }
+
+    private async Task<HttpResponse> HandleWebViewScreenshotAsync(HttpRequest request)
+    {
+        request.QueryParams.TryGetValue("context", out var contextId);
+        var bytes = await CaptureWebViewScreenshotAsync(string.IsNullOrWhiteSpace(contextId) ? null : contextId).ConfigureAwait(false);
+        return bytes != null ? HttpResponse.Png(bytes) : HttpResponse.Error("WebView screenshot capture failed", 500);
+    }
+
+    private async Task<HttpResponse> HandleWebViewCdpAsync(HttpRequest request)
+    {
+        var payload = request.BodyAs<WebViewCdpRequest>();
+        if (payload == null || string.IsNullOrWhiteSpace(payload.Method))
+            return HttpResponse.Error("Request must include a JSON body with a 'method' field", 400);
+
+        var result = await SendWebViewCdpCommandAsync(payload.Context, payload.Method, payload.Params).ConfigureAwait(false);
+        return result != null ? HttpResponse.Json(result) : HttpResponse.Error("WebView CDP command failed", 500);
+    }
+
     private async Task<HttpResponse> HandleTapAsync(HttpRequest request)
     {
         var payload = request.BodyAs<TapRequest>();
@@ -126,6 +155,13 @@ public abstract class DevFlowAgentServiceBase : IDisposable
         public string? Id { get; set; }
         public double DeltaX { get; set; }
         public double DeltaY { get; set; }
+    }
+
+    private sealed class WebViewCdpRequest
+    {
+        public string? Context { get; set; }
+        public string? Method { get; set; }
+        public JsonElement? Params { get; set; }
     }
 
     public void Dispose()

@@ -1,7 +1,9 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 using System.Windows;
+using Automation = System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -58,6 +60,24 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
     {
         return Application.Current?.Dispatcher.InvokeAsync(() => CaptureScreenshotOnUiThread(elementId)).Task
                ?? Task.FromResult<byte[]?>(null);
+    }
+
+    protected override Task<object?> GetWebViewContextsAsync()
+    {
+        return Application.Current?.Dispatcher.InvokeAsync<object?>(GetWebViewContextsOnUiThread).Task
+               ?? Task.FromResult<object?>(new { contexts = Array.Empty<object>() });
+    }
+
+    protected override Task<byte[]?> CaptureWebViewScreenshotAsync(string? contextId = null)
+    {
+        return Application.Current?.Dispatcher.InvokeAsync(() => CaptureWebViewScreenshotOnUiThread(contextId)).Task
+               ?? Task.FromResult<byte[]?>(null);
+    }
+
+    protected override Task<object?> SendWebViewCdpCommandAsync(string? contextId, string method, JsonElement? @params)
+    {
+        return Application.Current?.Dispatcher.InvokeAsync<object?>(() => SendWebViewCdpCommandOnUiThread(contextId, method, @params)).Task
+               ?? Task.FromResult<object?>(null);
     }
 
     protected override Task<bool> TryTapAsync(string elementId)
@@ -237,6 +257,118 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
         }
 
         return null;
+    }
+
+    private static object GetWebViewContextsOnUiThread()
+    {
+        var webViewType = FindType("Microsoft.Web.WebView2.Wpf.WebView2");
+        if (webViewType == null)
+            return new { contexts = Array.Empty<object>() };
+
+        var contexts = new List<object>();
+        foreach (var window in Application.Current?.Windows.OfType<Window>() ?? Enumerable.Empty<Window>())
+        {
+            foreach (var webView in EnumerateDescendants(window).Where(d => webViewType.IsInstanceOfType(d)))
+            {
+                var name = (webView as FrameworkElement)?.Name;
+                var automationId = (webView as FrameworkElement) != null
+                    ? Automation.AutomationProperties.GetAutomationId((FrameworkElement)webView)
+                    : null;
+                var id = !string.IsNullOrWhiteSpace(automationId) ? automationId : name ?? $"webview-{contexts.Count + 1}";
+                contexts.Add(new { id, type = "webview2", title = name ?? id });
+            }
+        }
+
+        return new { contexts };
+    }
+
+    private static byte[]? CaptureWebViewScreenshotOnUiThread(string? contextId)
+    {
+        var webViewType = FindType("Microsoft.Web.WebView2.Wpf.WebView2");
+        if (webViewType == null)
+            return null;
+
+        var webViews = Application.Current?.Windows
+            .OfType<Window>()
+            .SelectMany(EnumerateDescendants)
+            .Where(d => webViewType.IsInstanceOfType(d))
+            .ToList() ?? new List<DependencyObject>();
+
+        if (webViews.Count == 0)
+            return null;
+
+        var target = webViews.FirstOrDefault(w =>
+        {
+            if (string.IsNullOrWhiteSpace(contextId))
+                return true;
+            var fe = w as FrameworkElement;
+            var automationId = fe != null ? Automation.AutomationProperties.GetAutomationId(fe) : null;
+            return string.Equals(automationId, contextId, StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(fe?.Name, contextId, StringComparison.OrdinalIgnoreCase);
+        });
+
+        return TryCaptureWebView2Screenshot(target);
+    }
+
+    private static IEnumerable<DependencyObject> EnumerateDescendants(DependencyObject root)
+    {
+        var queue = new Queue<DependencyObject>();
+        queue.Enqueue(root);
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            yield return current;
+            var count = VisualTreeHelper.GetChildrenCount(current);
+            for (var i = 0; i < count; i++)
+            {
+                queue.Enqueue(VisualTreeHelper.GetChild(current, i));
+            }
+        }
+    }
+
+    private static object? SendWebViewCdpCommandOnUiThread(string? contextId, string method, JsonElement? @params)
+    {
+        var webViewType = FindType("Microsoft.Web.WebView2.Wpf.WebView2");
+        if (webViewType == null)
+            return null;
+
+        var target = Application.Current?.Windows
+            .OfType<Window>()
+            .SelectMany(EnumerateDescendants)
+            .FirstOrDefault(d =>
+            {
+                if (!webViewType.IsInstanceOfType(d))
+                    return false;
+                if (string.IsNullOrWhiteSpace(contextId))
+                    return true;
+                var fe = d as FrameworkElement;
+                var automationId = fe != null ? Automation.AutomationProperties.GetAutomationId(fe) : null;
+                return string.Equals(automationId, contextId, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(fe?.Name, contextId, StringComparison.OrdinalIgnoreCase);
+            });
+        if (target == null)
+            return null;
+
+        var core = webViewType.GetProperty("CoreWebView2", BindingFlags.Public | BindingFlags.Instance)?.GetValue(target);
+        if (core == null)
+            return null;
+
+        if (string.Equals(method, "Runtime.evaluate", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!@params.HasValue || !@params.Value.TryGetProperty("expression", out var exprProp))
+                return new { error = "Missing params.expression for Runtime.evaluate" };
+
+            var expression = exprProp.GetString() ?? string.Empty;
+            var execute = core.GetType().GetMethod("ExecuteScriptAsync", [typeof(string)]);
+            if (execute == null)
+                return null;
+
+            var task = execute.Invoke(core, [expression]) as Task<string>;
+            var result = task?.GetAwaiter().GetResult();
+            return new { result = new { value = result } };
+        }
+
+        return new { error = $"Unsupported CDP method: {method}" };
     }
 
     private static byte[]? CaptureElementScreenshot(FrameworkElement element)

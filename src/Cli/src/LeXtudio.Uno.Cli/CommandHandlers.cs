@@ -143,7 +143,7 @@ namespace LeXtudio.Uno.Cli
         {
             if (tokens.Count == 0)
             {
-                return WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap> [options]", options);
+                return WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap|webview> [options]", options);
             }
 
             var subcommand = tokens.Dequeue().ToLowerInvariant();
@@ -152,9 +152,10 @@ namespace LeXtudio.Uno.Cli
                 "status" => RunDevFlowStatus(tokens, options),
                 "screenshot" => RunDevFlowScreenshot(tokens, options),
                 "tap" => RunDevFlowTap(tokens, options),
-                "help" => WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap> [options]", options),
-                "--help" => WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap> [options]", options),
-                "-h" => WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap> [options]", options),
+                "webview" => RunDevFlowWebView(tokens, options),
+                "help" => WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap|webview> [options]", options),
+                "--help" => WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap|webview> [options]", options),
+                "-h" => WriteResult("devflow", "Usage: dotnet unolex devflow <status|screenshot|tap|webview> [options]", options),
                 _ => UnknownDevFlowSubcommand(subcommand)
             };
         }
@@ -250,6 +251,75 @@ namespace LeXtudio.Uno.Cli
             catch (Exception ex)
             {
                 return WriteResult("devflow", $"DevFlow tap failed: {ex.Message}", options);
+            }
+        }
+
+        private static int RunDevFlowWebView(Queue<string> tokens, OutputOptions options)
+        {
+            if (tokens.Count == 0)
+                return WriteResult("devflow", "Usage: dotnet unolex devflow webview <contexts|screenshot> [options]", options);
+
+            var sub = tokens.Dequeue().ToLowerInvariant();
+            return sub switch
+            {
+                "contexts" => RunDevFlowWebViewContexts(tokens, options),
+                "screenshot" => RunDevFlowWebViewScreenshot(tokens, options),
+                _ => WriteResult("devflow", "Usage: dotnet unolex devflow webview <contexts|screenshot> [options]", options)
+            };
+        }
+
+        private static int RunDevFlowWebViewContexts(Queue<string> tokens, OutputOptions options)
+        {
+            ParseDevFlowOptions(tokens, out var host, out var port, out _);
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+            var url = new Uri($"http://{host}:{port}/api/v1/webview/contexts");
+            try
+            {
+                var json = http.GetStringAsync(url).GetAwaiter().GetResult();
+                if (options.Json)
+                {
+                    Console.WriteLine(json);
+                    return 0;
+                }
+
+                Console.WriteLine("WebView contexts:");
+                Console.WriteLine(json);
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                return WriteResult("devflow", $"Failed to get webview contexts: {ex.Message}", options);
+            }
+        }
+
+        private static int RunDevFlowWebViewScreenshot(Queue<string> tokens, OutputOptions options)
+        {
+            ParseDevFlowOptions(tokens, out var host, out var port, out var outputFile);
+            string? context = null;
+            while (tokens.Count > 0)
+            {
+                var token = tokens.Dequeue();
+                if (token == "--context" && tokens.Count > 0)
+                {
+                    context = tokens.Dequeue();
+                    continue;
+                }
+            }
+
+            outputFile ??= "uno-devflow-webview-screenshot.png";
+            var path = $"/api/v1/webview/screenshot{(string.IsNullOrWhiteSpace(context) ? string.Empty : "?context=" + Uri.EscapeDataString(context))}";
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+            try
+            {
+                using var response = http.GetAsync(new Uri($"http://{host}:{port}{path}")).GetAwaiter().GetResult();
+                response.EnsureSuccessStatusCode();
+                var bytes = response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
+                File.WriteAllBytes(outputFile, bytes);
+                return WriteResult("devflow", $"Saved webview screenshot to {outputFile}", options);
+            }
+            catch (Exception ex)
+            {
+                return WriteResult("devflow", $"Failed to capture webview screenshot: {ex.Message}", options);
             }
         }
 

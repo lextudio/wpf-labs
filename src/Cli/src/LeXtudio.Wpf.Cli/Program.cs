@@ -128,6 +128,9 @@ namespace LeXtudio.Wpf.Cli
             Console.WriteLine("    status     Show DevFlow agent status");
             Console.WriteLine("    screenshot Capture a screenshot from a running DevFlow agent");
             Console.WriteLine("    tap        Send a tap action to a running DevFlow agent");
+            Console.WriteLine("    webview    WebView operations");
+            Console.WriteLine("      contexts List WebView contexts");
+            Console.WriteLine("      screenshot Capture WebView screenshot");
         }
     }
 }
