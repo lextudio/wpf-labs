@@ -67,9 +67,9 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         return InvokeOnUiThreadAsync(() => _treeWalker.FindElementById(id));
     }
 
-    protected override Task<byte[]?> CaptureScreenshotAsync()
+    protected override Task<byte[]?> CaptureScreenshotAsync(string? elementId = null)
     {
-        return InvokeOnUiThreadAsync(CaptureScreenshotOnUiThreadAsync);
+        return InvokeOnUiThreadAsync(() => CaptureScreenshotOnUiThreadAsync(elementId));
     }
 
     protected override Task<bool> TryTapAsync(string elementId)
@@ -213,11 +213,17 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         return GetPropertyValue(mainWindow, "DispatcherQueue");
     }
 
-    private async Task<byte[]?> CaptureScreenshotOnUiThreadAsync()
+    private async Task<byte[]?> CaptureScreenshotOnUiThreadAsync(string? elementId = null)
     {
         try
         {
-            var root = GetRootVisual();
+            var webViewCapture = await TryCaptureWebView2ScreenshotAsync().ConfigureAwait(false);
+            if (webViewCapture != null)
+                return webViewCapture;
+
+            var root = !string.IsNullOrWhiteSpace(elementId)
+                ? _treeWalker.FindElementObjectById(elementId)
+                : GetRootVisual();
             if (root == null)
             {
                 LogScreenshotFailure("root visual is null.");
@@ -298,6 +304,124 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
             LogScreenshotFailure(ex.ToString());
             return null;
         }
+    }
+
+    private async Task<byte[]?> TryCaptureWebView2ScreenshotAsync()
+    {
+        try
+        {
+            var webView2Type = FindType("Microsoft.UI.Xaml.Controls.WebView2");
+            if (webView2Type == null)
+                return null;
+
+            var webView = FindFirstDescendantOfType(GetRootVisual(), webView2Type);
+            if (webView == null)
+                return null;
+
+            var coreWebView2 = GetPropertyValue(webView, "CoreWebView2");
+            if (coreWebView2 == null)
+                return null;
+
+            var streamType = FindType("Windows.Storage.Streams.InMemoryRandomAccessStream");
+            if (streamType == null)
+                return null;
+
+            using var stream = Activator.CreateInstance(streamType) as IDisposable;
+            if (stream == null)
+                return null;
+
+            var imageFormatType = FindType("Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat");
+            if (imageFormatType == null)
+                return null;
+
+            var pngFormat = Enum.Parse(imageFormatType, "Png");
+            var capturePreviewAsync = coreWebView2.GetType().GetMethod("CapturePreviewAsync", [imageFormatType, streamType]);
+            if (capturePreviewAsync == null)
+                return null;
+
+            await AwaitAsync(capturePreviewAsync.Invoke(coreWebView2, [pngFormat, stream])).ConfigureAwait(false);
+
+            var sizeValue = GetPropertyValue(stream, "Size");
+            var streamSize = sizeValue switch
+            {
+                ulong u => u,
+                long l when l >= 0 => (ulong)l,
+                uint ui => ui,
+                int i when i >= 0 => (ulong)i,
+                _ => 0UL
+            };
+
+            if (streamSize == 0)
+                return null;
+
+            var seek = streamType.GetMethod("Seek", BindingFlags.Public | BindingFlags.Instance);
+            seek?.Invoke(stream, [0UL]);
+
+            var inputStream = streamType.GetMethod("GetInputStreamAt", BindingFlags.Public | BindingFlags.Instance)?.Invoke(stream, [0UL]);
+            if (inputStream == null)
+                return null;
+
+            var bufferType = FindType("Windows.Storage.Streams.Buffer");
+            var inputStreamOptionsType = FindType("Windows.Storage.Streams.InputStreamOptions");
+            if (bufferType == null || inputStreamOptionsType == null)
+                return null;
+
+            var buffer = Activator.CreateInstance(bufferType, (uint)streamSize);
+            if (buffer == null)
+                return null;
+
+            var options = Enum.Parse(inputStreamOptionsType, "None");
+            var readAsync = inputStream.GetType().GetMethod("ReadAsync", BindingFlags.Public | BindingFlags.Instance);
+            if (readAsync == null)
+                return null;
+
+            var readBuffer = await AwaitAsync(readAsync.Invoke(inputStream, [buffer, (object)(uint)streamSize, options])).ConfigureAwait(false);
+            return BufferToByteArray(readBuffer);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static object? FindFirstDescendantOfType(object? root, Type targetType)
+    {
+        if (root == null)
+            return null;
+
+        if (targetType.IsInstanceOfType(root))
+            return root;
+
+        var queue = new Queue<object>();
+        queue.Enqueue(root);
+
+        var visualTreeHelperType = FindType(
+            "Microsoft.UI.Xaml.Media.VisualTreeHelper",
+            "Windows.UI.Xaml.Media.VisualTreeHelper");
+        var getChildrenCount = visualTreeHelperType?.GetMethod("GetChildrenCount", BindingFlags.Public | BindingFlags.Static);
+        var getChild = visualTreeHelperType?.GetMethod("GetChild", BindingFlags.Public | BindingFlags.Static);
+        if (getChildrenCount == null || getChild == null)
+            return null;
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (targetType.IsInstanceOfType(current))
+                return current;
+
+            var countValue = getChildrenCount.Invoke(null, [current]);
+            if (countValue is not int count || count <= 0)
+                continue;
+
+            for (var i = 0; i < count; i++)
+            {
+                var child = getChild.Invoke(null, [current, i]);
+                if (child != null)
+                    queue.Enqueue(child);
+            }
+        }
+
+        return null;
     }
 
     private static void LogScreenshotFailure(string message)

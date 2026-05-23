@@ -62,7 +62,7 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
         return Task.FromResult(result);
     }
 
-    protected override Task<byte[]?> CaptureScreenshotAsync()
+    protected override Task<byte[]?> CaptureScreenshotAsync(string? elementId = null)
     {
         if (!Application.IsRunning)
             return Task.FromResult<byte[]?>(null);
@@ -72,7 +72,7 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
             return Task.FromResult<byte[]?>(null);
 
         var result = default(byte[]?);
-        app.Dispatcher.Invoke(() => result = CapturePrimaryWindowScreenshot());
+        app.Dispatcher.Invoke(() => result = CaptureScreenshotOnUiThread(elementId));
         return Task.FromResult(result);
     }
 
@@ -220,6 +220,67 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
             return CaptureMacOSWindow(window);
 
         return null;
+    }
+
+    private byte[]? CaptureScreenshotOnUiThread(string? elementId)
+    {
+        if (!string.IsNullOrWhiteSpace(elementId))
+        {
+            var target = _treeWalker.FindElementObjectById(elementId);
+            if (target is Element element)
+            {
+                var bytes = CaptureElementScreenshot(element);
+                if (bytes != null)
+                    return bytes;
+            }
+        }
+
+        return CapturePrimaryWindowScreenshot();
+    }
+
+    private static byte[]? CaptureElementScreenshot(Element element)
+    {
+        var window = Application.Current?.AllWindows.FirstOrDefault(w => w.Handle != 0);
+        if (window == null)
+            return null;
+
+        var windowPng = CapturePrimaryWindowScreenshot();
+        if (windowPng == null)
+            return null;
+
+        var bounds = element.Bounds;
+        var x = (int)Math.Floor(bounds.X);
+        var y = (int)Math.Floor(bounds.Y);
+        var width = (int)Math.Ceiling(bounds.Width);
+        var height = (int)Math.Ceiling(bounds.Height);
+        if (width <= 0 || height <= 0)
+            return null;
+
+        return CropPng(windowPng, x, y, width, height);
+    }
+
+    private static byte[]? CropPng(byte[] windowPng, int x, int y, int width, int height)
+    {
+        try
+        {
+            using var source = new System.Drawing.Bitmap(new MemoryStream(windowPng));
+            if (x < 0 || y < 0 || x >= source.Width || y >= source.Height)
+                return null;
+
+            var cropWidth = Math.Min(width, source.Width - x);
+            var cropHeight = Math.Min(height, source.Height - y);
+            if (cropWidth <= 0 || cropHeight <= 0)
+                return null;
+
+            using var cropped = source.Clone(new System.Drawing.Rectangle(x, y, cropWidth, cropHeight), source.PixelFormat);
+            using var ms = new MemoryStream();
+            cropped.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            return ms.ToArray();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static byte[]? CaptureX11Window(Window window)

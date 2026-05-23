@@ -44,9 +44,9 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
                ?? Task.FromResult<Microsoft.Maui.DevFlow.Agent.Core.ElementInfo?>(null);
     }
 
-    protected override Task<byte[]?> CaptureScreenshotAsync()
+    protected override Task<byte[]?> CaptureScreenshotAsync(string? elementId = null)
     {
-        return Application.Current?.Dispatcher.InvokeAsync(CapturePrimaryWindowScreenshot).Task
+        return Application.Current?.Dispatcher.InvokeAsync(() => CaptureScreenshotOnUiThread(elementId)).Task
                ?? Task.FromResult<byte[]?>(null);
     }
 
@@ -147,6 +147,49 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
 
         var rtb = new RenderTargetBitmap(width, height, dpi, dpi, PixelFormats.Pbgra32);
         rtb.Render(window);
+
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(rtb));
+        using var ms = new MemoryStream();
+        encoder.Save(ms);
+        return ms.ToArray();
+    }
+
+    private byte[]? CaptureScreenshotOnUiThread(string? elementId)
+    {
+        if (!string.IsNullOrWhiteSpace(elementId))
+        {
+            var element = _treeWalker.FindElementById(elementId);
+            var target = element == null ? null : _treeWalker.ResolveElementByStableId(element.Id);
+            if (target is FrameworkElement fe)
+            {
+                var bytes = CaptureElementScreenshot(fe);
+                if (bytes != null)
+                    return bytes;
+            }
+        }
+
+        return CapturePrimaryWindowScreenshot();
+    }
+
+    private static byte[]? CaptureElementScreenshot(FrameworkElement element)
+    {
+        var width = (int)Math.Ceiling(element.ActualWidth);
+        var height = (int)Math.Ceiling(element.ActualHeight);
+        if (width <= 0 || height <= 0)
+            return null;
+
+        var source = PresentationSource.FromVisual(element);
+        var dpiX = 96.0;
+        var dpiY = 96.0;
+        if (source?.CompositionTarget != null)
+        {
+            dpiX = 96.0 * source.CompositionTarget.TransformToDevice.M11;
+            dpiY = 96.0 * source.CompositionTarget.TransformToDevice.M22;
+        }
+
+        var rtb = new RenderTargetBitmap(width, height, dpiX, dpiY, PixelFormats.Pbgra32);
+        rtb.Render(element);
 
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(rtb));

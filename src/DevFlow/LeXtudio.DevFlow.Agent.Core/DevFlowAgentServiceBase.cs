@@ -34,7 +34,7 @@ public abstract class DevFlowAgentServiceBase : IDisposable
     protected abstract string FrameworkName { get; }
     protected abstract Task<List<ElementInfo>> BuildTreeAsync();
     protected abstract Task<ElementInfo?> FindElementAsync(string id);
-    protected abstract Task<byte[]?> CaptureScreenshotAsync();
+    protected abstract Task<byte[]?> CaptureScreenshotAsync(string? elementId = null);
     protected abstract Task<bool> TryTapAsync(string elementId);
     protected abstract Task<bool> TryScrollAsync(string elementId, double deltaX, double deltaY);
     protected abstract Task<string?> GetApplicationNameAsync();
@@ -81,7 +81,8 @@ public abstract class DevFlowAgentServiceBase : IDisposable
 
     private async Task<HttpResponse> HandleScreenshotAsync(HttpRequest request)
     {
-        var bytes = await CaptureScreenshotAsync().ConfigureAwait(false);
+        request.QueryParams.TryGetValue("id", out var elementId);
+        var bytes = await CaptureScreenshotAsync(string.IsNullOrWhiteSpace(elementId) ? null : elementId).ConfigureAwait(false);
         return bytes != null ? HttpResponse.Png(bytes) : HttpResponse.Error("Screenshot capture failed", 500);
     }
 
