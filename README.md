@@ -1,6 +1,8 @@
 # WPF Labs
 
-This workspace contains the WPF DevFlow proof-of-concept and supporting tooling for the WPF tooling research project.
+Here contains the WPF DevFlow proof-of-concept and supporting tooling for the WPF tooling research project. Experiments on other UI frameworks like WinUI 3, Uno Platform, and MewUI are also included here for comparison and validation purposes.
+
+This project is not affiliated with, endorsed by, or sponsored by Microsoft.
 
 ## NuGet packages
 
@@ -132,6 +134,10 @@ dotnet mewlex --help
 ## License
 
 MIT
+
+## Affiliation
+
+
 
 ## Copyright
 
