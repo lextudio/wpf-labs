@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -22,6 +23,15 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
     protected override string AgentId => "LeXtudio.DevFlow.Agent";
     protected override string AgentName => "LeXtudio.DevFlow.Agent";
     protected override string FrameworkName => "wpf";
+    protected override object GetCapabilities() => new
+    {
+        screenshots = true,
+        elementScreenshots = true,
+        tap = true,
+        scroll = true,
+        webview = true,
+        multiWindow = true
+    };
 
     protected override Task<string?> GetApplicationNameAsync()
     {
@@ -161,6 +171,10 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
         {
             var element = _treeWalker.FindElementById(elementId);
             var target = element == null ? null : _treeWalker.ResolveElementByStableId(element.Id);
+            var webViewBytes = TryCaptureWebView2Screenshot(target);
+            if (webViewBytes != null)
+                return webViewBytes;
+
             if (target is FrameworkElement fe)
             {
                 var bytes = CaptureElementScreenshot(fe);
@@ -170,6 +184,59 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
         }
 
         return CapturePrimaryWindowScreenshot();
+    }
+
+    private static byte[]? TryCaptureWebView2Screenshot(DependencyObject? target)
+    {
+        try
+        {
+            if (target == null)
+                return null;
+
+            var webView2Type = FindType("Microsoft.Web.WebView2.Wpf.WebView2");
+            if (webView2Type == null || !webView2Type.IsInstanceOfType(target))
+                return null;
+
+            var coreWebView2 = webView2Type.GetProperty("CoreWebView2", BindingFlags.Public | BindingFlags.Instance)?.GetValue(target);
+            if (coreWebView2 == null)
+                return null;
+
+            var imageFormatType = FindType("Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat");
+            if (imageFormatType == null)
+                return null;
+
+            var pngFormat = Enum.Parse(imageFormatType, "Png");
+            var capturePreviewAsync = coreWebView2.GetType().GetMethod("CapturePreviewAsync", [imageFormatType, typeof(Stream)]);
+            if (capturePreviewAsync == null)
+                return null;
+
+            using var stream = new MemoryStream();
+            if (capturePreviewAsync.Invoke(coreWebView2, [pngFormat, stream]) is not Task task)
+                return null;
+
+            task.GetAwaiter().GetResult();
+            return stream.Length > 0 ? stream.ToArray() : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Type? FindType(string typeName)
+    {
+        var type = Type.GetType(typeName, false, true);
+        if (type != null)
+            return type;
+
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            type = assembly.GetType(typeName, false, true);
+            if (type != null)
+                return type;
+        }
+
+        return null;
     }
 
     private static byte[]? CaptureElementScreenshot(FrameworkElement element)

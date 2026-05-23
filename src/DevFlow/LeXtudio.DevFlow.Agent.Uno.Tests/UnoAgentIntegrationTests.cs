@@ -54,6 +54,12 @@ public class UnoAgentIntegrationTests
             Assert.True(status.GetProperty("running").GetBoolean());
             Assert.Equal("LeXtudio.DevFlow.Agent", status.GetProperty("name").GetString());
             Assert.Equal("uno", status.GetProperty("framework").GetString());
+            var capabilities = status.GetProperty("capabilities");
+            Assert.True(capabilities.GetProperty("screenshots").GetBoolean());
+            Assert.True(capabilities.GetProperty("elementScreenshots").GetBoolean());
+            Assert.True(capabilities.GetProperty("tap").GetBoolean());
+            Assert.True(capabilities.GetProperty("scroll").GetBoolean());
+            Assert.True(capabilities.GetProperty("multiWindow").GetBoolean());
         }
         finally
         {
@@ -225,6 +231,86 @@ public class UnoAgentIntegrationTests
         }
     }
 
+    [Theory]
+    [MemberData(nameof(UnoTestTargets))]
+    public async Task WebView_ElementScreenshot_ReturnsValidPng(string targetFramework)
+    {
+        var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
+        var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
+        if (!File.Exists(hostProjectPath))
+            throw new InvalidOperationException($"Unable to locate Uno host project at {hostProjectPath}");
+
+        var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
+        BuildHostProject(hostProjectPath, targetFramework, hostProjectDirectory);
+
+        var exePath = GetHostExecutablePath(hostProjectDirectory, targetFramework);
+        if (!File.Exists(exePath))
+            throw new InvalidOperationException($"Unable to locate Uno host executable at {exePath}");
+
+        var port = GetFreePort();
+        using var process = StartHiddenProcess(exePath, hostProjectDirectory, port);
+        if (process == null || process.HasExited)
+            throw new InvalidOperationException("Failed to start the Uno host process.");
+
+        try
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+            await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+            var screenshotBytes = await PollScreenshotAsync(client, "/api/v1/ui/screenshot?id=WebViewHost", TimeSpan.FromSeconds(20));
+            Assert.NotEmpty(screenshotBytes);
+            Assert.True(IsPng(screenshotBytes));
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+                process.WaitForExit(5000);
+            }
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(UnoTestTargets))]
+    public async Task ElementScreenshot_ReturnsValidPng(string targetFramework)
+    {
+        var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
+        var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
+        if (!File.Exists(hostProjectPath))
+            throw new InvalidOperationException($"Unable to locate Uno host project at {hostProjectPath}");
+
+        var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
+        BuildHostProject(hostProjectPath, targetFramework, hostProjectDirectory);
+
+        var exePath = GetHostExecutablePath(hostProjectDirectory, targetFramework);
+        if (!File.Exists(exePath))
+            throw new InvalidOperationException($"Unable to locate Uno host executable at {exePath}");
+
+        var port = GetFreePort();
+        using var process = StartHiddenProcess(exePath, hostProjectDirectory, port);
+        if (process == null || process.HasExited)
+            throw new InvalidOperationException("Failed to start the Uno host process.");
+
+        try
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+            await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+            var screenshotBytes = await PollScreenshotAsync(client, "/api/v1/ui/screenshot?id=ActionButton", TimeSpan.FromSeconds(20));
+            Assert.NotEmpty(screenshotBytes);
+            Assert.True(IsPng(screenshotBytes));
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+                process.WaitForExit(5000);
+            }
+        }
+    }
+
     private static async Task<double> PollForScrollOffsetAsync(HttpClient client, string elementId, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
@@ -298,6 +384,25 @@ public class UnoAgentIntegrationTests
         }
 
         return true;
+    }
+
+    private static async Task<byte[]> PollScreenshotAsync(HttpClient client, string path, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            using var response = await client.GetAsync(path);
+            if (response.IsSuccessStatusCode)
+            {
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                if (bytes.Length > 0 && IsPng(bytes))
+                    return bytes;
+            }
+
+            await Task.Delay(300);
+        }
+
+        throw new InvalidOperationException($"Screenshot endpoint did not return a PNG in time: {path}");
     }
 
     private static Process? StartHiddenProcess(string exePath, string workingDirectory, int port)

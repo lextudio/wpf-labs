@@ -24,6 +24,15 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
     protected override string AgentId => "LeXtudio.DevFlow.Agent";
     protected override string AgentName => "LeXtudio.DevFlow.Agent";
     protected override string FrameworkName => "uno";
+    protected override object GetCapabilities() => new
+    {
+        screenshots = true,
+        elementScreenshots = true,
+        tap = true,
+        scroll = true,
+        webview = true,
+        multiWindow = true
+    };
 
     protected override Task<string?> GetApplicationNameAsync()
     {

@@ -38,6 +38,15 @@ public abstract class DevFlowAgentServiceBase : IDisposable
     protected abstract Task<bool> TryTapAsync(string elementId);
     protected abstract Task<bool> TryScrollAsync(string elementId, double deltaX, double deltaY);
     protected abstract Task<string?> GetApplicationNameAsync();
+    protected virtual object GetCapabilities() => new
+    {
+        screenshots = true,
+        elementScreenshots = true,
+        tap = true,
+        scroll = true,
+        webview = false,
+        multiWindow = false
+    };
 
     private void RegisterRoutes()
     {
@@ -59,7 +68,8 @@ public abstract class DevFlowAgentServiceBase : IDisposable
             version = GetType().Assembly.GetName().Version?.ToString() ?? "0.0.0",
             running = true,
             port = Port,
-            application = await GetApplicationNameAsync().ConfigureAwait(false)
+            application = await GetApplicationNameAsync().ConfigureAwait(false),
+            capabilities = GetCapabilities()
         };
         return HttpResponse.Json(status);
     }
