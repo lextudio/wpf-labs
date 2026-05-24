@@ -572,12 +572,18 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
             if (capturePreviewAsync == null)
                 return null;
 
-            using var stream = new MemoryStream();
+            var stream = new MemoryStream();
             if (capturePreviewAsync.Invoke(coreWebView2, [pngFormat, stream]) is not Task task)
                 return null;
 
-            task.GetAwaiter().GetResult();
-            return stream.Length > 0 ? stream.ToArray() : null;
+            if (!task.Wait(TimeSpan.FromSeconds(3)))
+                return null;
+
+            using (stream)
+            {
+                task.GetAwaiter().GetResult();
+                return stream.Length > 0 ? stream.ToArray() : null;
+            }
         }
         catch
         {

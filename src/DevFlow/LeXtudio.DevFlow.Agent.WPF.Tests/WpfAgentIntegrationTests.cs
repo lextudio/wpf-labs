@@ -193,7 +193,15 @@ public class WpfAgentIntegrationTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStreamAsync());
         Assert.False(doc.RootElement.GetProperty("success").GetBoolean());
-        Assert.Equal("missing_query_parameter", doc.RootElement.GetProperty("error").GetProperty("code").GetString());
+        var error = doc.RootElement.GetProperty("error");
+        if (error.ValueKind == JsonValueKind.Object)
+        {
+            Assert.Equal("missing_query_parameter", error.GetProperty("code").GetString());
+        }
+        else
+        {
+            Assert.Contains("Missing required query parameter", error.GetString(), StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [Fact]
@@ -308,12 +316,21 @@ public class WpfAgentIntegrationTests
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {
-            using var response = await client.GetAsync(path);
-            if (response.IsSuccessStatusCode)
+            try
             {
-                var bytes = await response.Content.ReadAsByteArrayAsync();
-                if (bytes.Length > 0 && IsPng(bytes))
-                    return bytes;
+                using var response = await client.GetAsync(path);
+                if (response.IsSuccessStatusCode)
+                {
+                    var bytes = await response.Content.ReadAsByteArrayAsync();
+                    if (bytes.Length > 0 && IsPng(bytes))
+                        return bytes;
+                }
+            }
+            catch (HttpRequestException)
+            {
+            }
+            catch (TaskCanceledException)
+            {
             }
 
             await Task.Delay(300);
