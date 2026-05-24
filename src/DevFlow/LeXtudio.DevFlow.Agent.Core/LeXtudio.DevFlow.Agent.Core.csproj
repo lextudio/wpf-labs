@@ -22,6 +22,9 @@
     <Compile Include="..\..\..\external\maui-labs\src\DevFlow\Microsoft.Maui.DevFlow.Agent.Core\AgentOptions.cs">
       <Link>AgentOptions.cs</Link>
     </Compile>
+    <Compile Include="..\..\..\external\maui-labs\src\DevFlow\Microsoft.Maui.DevFlow.Agent.Core\AgentExtension.cs">
+      <Link>AgentExtension.cs</Link>
+    </Compile>
     <Compile Include="..\..\..\external\maui-labs\src\DevFlow\Microsoft.Maui.DevFlow.Agent.Core\DevFlowActionAttribute.cs">
       <Link>DevFlowActionAttribute.cs</Link>
     </Compile>

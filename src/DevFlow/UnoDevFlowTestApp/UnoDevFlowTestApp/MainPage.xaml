@@ -66,8 +66,8 @@
                    Width="320" />
         <TextBlock Text="WebView test surface:" FontWeight="SemiBold" Width="320" />
         <Border BorderBrush="Gray" BorderThickness="1" Width="320" Height="180">
-          <WebView x:Name="WebViewHost"
-                   AutomationProperties.AutomationId="WebViewHost" />
+          <WebView2 x:Name="WebViewHost"
+                    AutomationProperties.AutomationId="WebViewHost" />
         </Border>
       </StackPanel>
     </Grid>

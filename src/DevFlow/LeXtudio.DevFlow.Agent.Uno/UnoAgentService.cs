@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Versioning;
 using System.Runtime.InteropServices;
@@ -167,12 +168,39 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
             if (target == null)
                 return false;
 
-            var focusMethod = target.GetType().GetMethod("Focus", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
-            if (focusMethod == null)
+            var targetType = target.GetType();
+
+            // First try parameterless Focus(), available on some XAML targets.
+            var focusNoArgs = targetType.GetMethod("Focus", BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (focusNoArgs != null)
+            {
+                var result = focusNoArgs.Invoke(target, null);
+                if (result is bool focused)
+                    return focused;
+
+                return true;
+            }
+
+            // Fall back to Focus(FocusState) for platforms where only that overload exists.
+            var focusWithState = targetType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .FirstOrDefault(m =>
+                {
+                    if (!string.Equals(m.Name, "Focus", StringComparison.Ordinal))
+                        return false;
+
+                    var parameters = m.GetParameters();
+                    return parameters.Length == 1 && parameters[0].ParameterType.IsEnum;
+                });
+
+            if (focusWithState == null)
                 return false;
 
-            var result = focusMethod.Invoke(target, null);
-            return result is bool focused ? focused : true;
+            var enumType = focusWithState.GetParameters()[0].ParameterType;
+            var programmatic = Enum.GetNames(enumType).FirstOrDefault(n => string.Equals(n, "Programmatic", StringComparison.OrdinalIgnoreCase));
+            var state = programmatic != null ? Enum.Parse(enumType, programmatic) : Enum.ToObject(enumType, 0);
+
+            var focusedResult = focusWithState.Invoke(target, new[] { state });
+            return focusedResult is bool focusedBool ? focusedBool : true;
         });
     }
 

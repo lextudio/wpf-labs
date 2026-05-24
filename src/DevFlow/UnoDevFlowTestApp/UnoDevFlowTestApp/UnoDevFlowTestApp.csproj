@@ -46,11 +46,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.19041.0'" />
-    <PackageVersion Include="Microsoft.WindowsAppSDK" Version="1.7.250909003" Condition="'$(TargetFramework)' == 'net10.0-windows10.0.19041.0'" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Remove="Program.cs" />
   </ItemGroup>
 </Project>

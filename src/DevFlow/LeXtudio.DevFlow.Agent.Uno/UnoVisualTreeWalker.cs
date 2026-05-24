@@ -307,15 +307,15 @@ public sealed class UnoVisualTreeWalker : IVisualTreeWalker
     private string? GetElementText(object element)
     {
         var text = GetPropertyValue(element, "Text") as string;
-        if (!string.IsNullOrWhiteSpace(text))
+        if (text != null)
             return text;
 
         var content = GetPropertyValue(element, "Content");
-        if (content is string contentString && !string.IsNullOrWhiteSpace(contentString))
+        if (content is string contentString)
             return contentString;
 
         var header = GetPropertyValue(element, "Header") as string;
-        if (!string.IsNullOrWhiteSpace(header))
+        if (header != null)
             return header;
 
         return null;
