@@ -9,6 +9,43 @@ public static class WindowsNativeInput
     public const ushort VirtualKeyControl = 0x11;
     public const ushort VirtualKeyReturn = 0x0D;
 
+    public static bool TryBringToForeground(IntPtr hwnd)
+    {
+        if (!OperatingSystem.IsWindows() || hwnd == IntPtr.Zero)
+            return false;
+
+        // SendInput / mouse_event / SetCursorPos all deliver to the foreground
+        // window's input queue. Even when the agent and the target window are
+        // in the same process, Windows refuses naive SetForegroundWindow calls
+        // unless we own the foreground or do the AttachThreadInput dance.
+        ShowWindow(hwnd, SwShow);
+
+        var currentThread = GetCurrentThreadId();
+        var foreground = GetForegroundWindow();
+        var foregroundThread = foreground == IntPtr.Zero
+            ? 0u
+            : GetWindowThreadProcessId(foreground, out _);
+
+        var attached = false;
+        if (foregroundThread != 0 && foregroundThread != currentThread)
+            attached = AttachThreadInput(currentThread, foregroundThread, true);
+
+        try
+        {
+            BringWindowToTop(hwnd);
+            SetForegroundWindow(hwnd);
+            SetActiveWindow(hwnd);
+            SetFocus(hwnd);
+        }
+        finally
+        {
+            if (attached)
+                AttachThreadInput(currentThread, foregroundThread, false);
+        }
+
+        return GetForegroundWindow() == hwnd;
+    }
+
     public static bool TrySendClick(int x, int y)
     {
         if (!OperatingSystem.IsWindows())
@@ -21,6 +58,53 @@ public static class WindowsNativeInput
         mouse_event(MouseEventLeftUp, 0, 0, 0, UIntPtr.Zero);
         return true;
     }
+
+    public static bool TryPostMouseClick(IntPtr hwnd, int clientX, int clientY)
+    {
+        if (!OperatingSystem.IsWindows() || hwnd == IntPtr.Zero)
+            return false;
+
+        var lParam = MakeLParam(clientX, clientY);
+        // PostMessage targets the HWND's queue directly, so a hidden / non-
+        // foreground window still gets the click. Move + button down + up
+        // mirrors what SendInput would produce.
+        return PostMessage(hwnd, WmMouseMove, IntPtr.Zero, lParam)
+            && PostMessage(hwnd, WmLButtonDown, new IntPtr(MkLButton), lParam)
+            && PostMessage(hwnd, WmLButtonUp, IntPtr.Zero, lParam);
+    }
+
+    public static bool TryPostVirtualKey(IntPtr hwnd, ushort virtualKey)
+    {
+        if (!OperatingSystem.IsWindows() || hwnd == IntPtr.Zero)
+            return false;
+
+        // lParam layout for WM_KEYDOWN/UP: repeat count (16) | scan code (8) |
+        // extended (1) | … | context (29) | previous state (30) | transition (31).
+        var down = new IntPtr(1);
+        var up = new IntPtr(unchecked((int)0xC0000001));
+        if (!PostMessage(hwnd, WmKeyDown, new IntPtr(virtualKey), down))
+            return false;
+
+        // Uno's Skia-Win32 keyboard handler peeks for the WM_CHAR that normally
+        // follows WM_KEYDOWN under TranslateMessage. Posting it ourselves lets
+        // controls that key off the character (TextBox Enter handling, etc.)
+        // see a complete event sequence.
+        var character = MapVirtualKeyToChar(virtualKey);
+        if (character.HasValue)
+            PostMessage(hwnd, WmChar, new IntPtr(character.Value), down);
+
+        return PostMessage(hwnd, WmKeyUp, new IntPtr(virtualKey), up);
+    }
+
+    private static char? MapVirtualKeyToChar(ushort virtualKey) => virtualKey switch
+    {
+        VirtualKeyReturn => '\r',
+        VirtualKeyBackspace => '\b',
+        _ => null,
+    };
+
+    private static IntPtr MakeLParam(int low, int high) =>
+        new((high << 16) | (low & 0xFFFF));
 
     public static bool TrySendChord(params ushort[] keys)
     {
@@ -112,6 +196,16 @@ public static class WindowsNativeInput
     private const uint KeyEventKeyUp = 0x0002;
     private const uint KeyEventUnicode = 0x0004;
 
+    private const uint WmMouseMove = 0x0200;
+    private const uint WmLButtonDown = 0x0201;
+    private const uint WmLButtonUp = 0x0202;
+    private const uint WmKeyDown = 0x0100;
+    private const uint WmKeyUp = 0x0101;
+    private const uint WmChar = 0x0102;
+    private const int MkLButton = 0x0001;
+    private const int SwShow = 5;
+    private const int SwShowNoActivate = 4;
+
     [StructLayout(LayoutKind.Sequential)]
     private struct INPUT
     {
@@ -144,4 +238,39 @@ public static class WindowsNativeInput
 
     [DllImport("user32.dll", SetLastError = false)]
     private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SetActiveWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SetFocus(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool BringWindowToTop(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, [MarshalAs(UnmanagedType.Bool)] bool fAttach);
 }

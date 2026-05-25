@@ -1386,18 +1386,15 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
 
         try
         {
-            var appType = FindType(
-                "Microsoft.UI.Xaml.Application",
-                "Windows.UI.Xaml.Application");
-            var app = appType?.GetProperty("Current", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-            var window = GetPropertyValueAny(app, "MainWindow")
-                ?? GetPropertyValueAny(app, "CurrentWindow");
-
-            var hwnd = window != null ? GetWindowHandle(window) : IntPtr.Zero;
-            if (hwnd == IntPtr.Zero)
-                hwnd = GetSkiaWin32WindowHandle();
+            var hwnd = ResolveUnoHwnd();
             if (hwnd == IntPtr.Zero)
                 return false;
+
+            // Bring our own window to the foreground first so SendInput's
+            // mouse / keyboard events actually land here. Both the agent and
+            // the Uno window live in the same process, so SetForegroundWindow
+            // succeeds without the foreground-lock workaround.
+            WindowsNativeInput.TryBringToForeground(hwnd);
 
             var clickPoint = TryGetElementClickPoint(element, hwnd);
             if (clickPoint == null)
@@ -1409,6 +1406,22 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         {
             return false;
         }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static IntPtr ResolveUnoHwnd()
+    {
+        var appType = FindType(
+            "Microsoft.UI.Xaml.Application",
+            "Windows.UI.Xaml.Application");
+        var app = appType?.GetProperty("Current", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+        var window = GetPropertyValueAny(app, "MainWindow")
+            ?? GetPropertyValueAny(app, "CurrentWindow");
+
+        var hwnd = window != null ? GetWindowHandle(window) : IntPtr.Zero;
+        if (hwnd == IntPtr.Zero)
+            hwnd = GetSkiaWin32WindowHandle();
+        return hwnd;
     }
 
     [SupportedOSPlatform("windows")]
@@ -1475,6 +1488,46 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
             return UnwrapHandle(valueProperty.GetValue(handle));
 
         return IntPtr.Zero;
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static (int X, int Y)? TryGetElementClientPoint(object element)
+    {
+        // Same geometry pipeline as TryGetElementClickPoint but returns the
+        // window-client-area coordinates (no ClientToScreen). PostMessage-based
+        // input takes client coords directly, and stays valid even when the
+        // window is hidden / not foreground.
+        var transformToVisual = element.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(m => string.Equals(m.Name, "TransformToVisual", StringComparison.Ordinal) && m.GetParameters().Length == 1);
+        var root = GetRootForTransform(element);
+        if (transformToVisual == null || root == null)
+            return null;
+
+        var transform = transformToVisual.Invoke(element, new[] { root });
+        if (transform == null)
+            return null;
+
+        var actualWidth = GetDoubleProperty(element, "ActualWidth");
+        var actualHeight = GetDoubleProperty(element, "ActualHeight");
+        if (actualWidth is null or <= 0 || actualHeight is null or <= 0)
+            return null;
+
+        var pointType = FindType("Windows.Foundation.Point");
+        if (pointType == null)
+            return null;
+
+        var center = Activator.CreateInstance(pointType, actualWidth.Value / 2d, actualHeight.Value / 2d);
+        var transformPoint = transform.GetType().GetMethod("TransformPoint", BindingFlags.Public | BindingFlags.Instance);
+        var transformed = transformPoint?.Invoke(transform, new[] { center });
+        if (transformed == null)
+            return null;
+
+        var x = GetDoubleProperty(transformed, "X");
+        var y = GetDoubleProperty(transformed, "Y");
+        if (x is null || y is null)
+            return null;
+
+        return ((int)Math.Round(x.Value), (int)Math.Round(y.Value));
     }
 
     [SupportedOSPlatform("windows")]
@@ -1547,7 +1600,7 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
             return false;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return TryNativeAction(element, resolver => WindowsNativeActions.TryTextInput(resolver, text, replace));
+            return TryWindowsNativeTextInput(element, text, replace);
 
         if (!PosixNativeActions.IsAvailable)
             return false;
@@ -1556,10 +1609,21 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         return PosixNativeActions.TryTextInput(text, replace);
     }
 
+    [SupportedOSPlatform("windows")]
+    private static bool TryWindowsNativeTextInput(object element, string text, bool replace)
+    {
+        var hwnd = ResolveUnoHwnd();
+        if (hwnd == IntPtr.Zero)
+            return false;
+
+        WindowsNativeInput.TryBringToForeground(hwnd);
+        return TryNativeAction(element, resolver => WindowsNativeActions.TryTextInput(resolver, text, replace));
+    }
+
     private static bool TryNativeKeyInput(object element, string normalizedKey, string? insertText)
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return TryNativeAction(element, resolver => WindowsNativeActions.TryKeyInput(resolver, normalizedKey, insertText));
+            return TryWindowsNativeKeyInput(element, normalizedKey, insertText);
 
         if (!PosixNativeActions.IsAvailable)
             return false;
@@ -1572,6 +1636,17 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
 
         TryFocusElement(element);
         return PosixNativeActions.TryKeyInput(normalizedKey, insertText);
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static bool TryWindowsNativeKeyInput(object element, string normalizedKey, string? insertText)
+    {
+        var hwnd = ResolveUnoHwnd();
+        if (hwnd == IntPtr.Zero)
+            return false;
+
+        WindowsNativeInput.TryBringToForeground(hwnd);
+        return TryNativeAction(element, resolver => WindowsNativeActions.TryKeyInput(resolver, normalizedKey, insertText));
     }
 
     private static bool IsKeyboardEditableElement(object element)
