@@ -50,14 +50,14 @@ cd src\DevFlow\WpfDevFlowTestApp
 dotnet run --no-build
 ```
 
-The sample app starts DevFlow on port `5500` and exposes:
+The sample app starts DevFlow on port `9223` and exposes:
 
-- `GET http://localhost:5500/api/v1/agent/status`
-- `GET http://localhost:5500/api/v1/ui/tree`
-- `GET http://localhost:5500/api/v1/ui/element?id=<id>`
-- `GET http://localhost:5500/api/v1/ui/screenshot`
-- `POST http://localhost:5500/api/v1/ui/tap`
-- `POST http://localhost:5500/api/v1/ui/actions/scroll`
+- `GET http://localhost:9223/api/v1/agent/status`
+- `GET http://localhost:9223/api/v1/ui/tree`
+- `GET http://localhost:9223/api/v1/ui/element?id=<id>`
+- `GET http://localhost:9223/api/v1/ui/screenshot`
+- `POST http://localhost:9223/api/v1/ui/tap`
+- `POST http://localhost:9223/api/v1/ui/actions/scroll`
 
 ### Run the WinForms sample app
 
@@ -75,14 +75,14 @@ cd src\DevFlow\UnoDevFlowTestApp
 dotnet run -f net10.0-desktop --no-build
 ```
 
-This launches the sample app on Uno Platform and it starts DevFlow on port `5500` and exposes:
+This launches the sample app on Uno Platform and it starts DevFlow on port `9223` and exposes:
 
-- `GET http://localhost:5500/api/v1/agent/status`
-- `GET http://localhost:5500/api/v1/ui/tree`
-- `GET http://localhost:5500/api/v1/ui/element?id=<id>`
-- `GET http://localhost:5500/api/v1/ui/screenshot`
-- `POST http://localhost:5500/api/v1/ui/tap`
-- `POST http://localhost:5500/api/v1/ui/actions/scroll`
+- `GET http://localhost:9223/api/v1/agent/status`
+- `GET http://localhost:9223/api/v1/ui/tree`
+- `GET http://localhost:9223/api/v1/ui/element?id=<id>`
+- `GET http://localhost:9223/api/v1/ui/screenshot`
+- `POST http://localhost:9223/api/v1/ui/tap`
+- `POST http://localhost:9223/api/v1/ui/actions/scroll`
 
 > Note: WinUI apps can also use the WinApp CLI UI commands to achieve a similar runtime UI inspection and interaction workflow. DevFlow is therefore optional for WinUI scenarios when comparable WinApp CLI support already exists.
 

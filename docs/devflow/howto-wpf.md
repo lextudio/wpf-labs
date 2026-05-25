@@ -89,7 +89,7 @@ Practically, this means tooling can inspect the live UI tree, capture screenshot
 
 - `DEVFLOW_HIDE_WINDOW`: for automation scenarios, hides the main window when set to `true`.
 
-The agent defaults to port `5500` when no custom port is configured.
+The agent defaults to port `9223` when no custom port is configured.
 
 ## 8. Recommended practice
 

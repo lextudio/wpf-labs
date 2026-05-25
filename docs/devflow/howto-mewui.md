@@ -42,7 +42,7 @@ dotnet run
 ## 6. Verify the agent
 
 ```powershell
-Invoke-WebRequest http://localhost:5500/api/v1/agent/status | Select-Object -ExpandProperty Content
+Invoke-WebRequest http://localhost:9223/api/v1/agent/status | Select-Object -ExpandProperty Content
 ```
 
 ## 7. What to expect after adoption

@@ -44,7 +44,7 @@ dotnet run
 ## 5. Verify the agent
 
 ```powershell
-Invoke-WebRequest http://localhost:5500/api/v1/agent/status | Select-Object -ExpandProperty Content
+Invoke-WebRequest http://localhost:9223/api/v1/agent/status | Select-Object -ExpandProperty Content
 ```
 
 You should receive JSON with framework, id, running status, and port.
