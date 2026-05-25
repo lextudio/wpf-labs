@@ -1392,10 +1392,10 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
             var app = appType?.GetProperty("Current", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
             var window = GetPropertyValueAny(app, "MainWindow")
                 ?? GetPropertyValueAny(app, "CurrentWindow");
-            if (window == null)
-                return false;
 
-            var hwnd = GetWindowHandle(window);
+            var hwnd = window != null ? GetWindowHandle(window) : IntPtr.Zero;
+            if (hwnd == IntPtr.Zero)
+                hwnd = GetSkiaWin32WindowHandle();
             if (hwnd == IntPtr.Zero)
                 return false;
 
@@ -1424,6 +1424,32 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
             int value => new IntPtr(value),
             _ => IntPtr.Zero
         };
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static IntPtr GetSkiaWin32WindowHandle()
+    {
+        // On the net10.0-desktop TFM Uno runs on Skia-Win32, so WinRT.Interop.WindowNative
+        // doesn't apply. The Win32 backend exposes the live HWND set via a public static
+        // accessor (Win32WindowWrapper.GetHwnds). Reach it through reflection so this
+        // assembly does not need a hard reference on Uno.UI.Runtime.Skia.Win32.
+        var wrapperType = FindType("Uno.UI.Runtime.Skia.Win32.Win32WindowWrapper");
+        var getHwnds = wrapperType?.GetMethod("GetHwnds", BindingFlags.Public | BindingFlags.Static);
+        if (getHwnds?.Invoke(null, null) is not System.Collections.IEnumerable hwnds)
+            return IntPtr.Zero;
+
+        foreach (var hwnd in hwnds)
+        {
+            return hwnd switch
+            {
+                IntPtr value => value,
+                long value => new IntPtr(value),
+                int value => new IntPtr(value),
+                _ => IntPtr.Zero
+            };
+        }
+
+        return IntPtr.Zero;
     }
 
     [SupportedOSPlatform("windows")]
@@ -1518,10 +1544,10 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
             var app = appType?.GetProperty("Current", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
             var window = GetPropertyValueAny(app, "MainWindow")
                 ?? GetPropertyValueAny(app, "CurrentWindow");
-            if (window == null)
-                return false;
 
-            var hwnd = GetWindowHandle(window);
+            var hwnd = window != null ? GetWindowHandle(window) : IntPtr.Zero;
+            if (hwnd == IntPtr.Zero)
+                hwnd = GetSkiaWin32WindowHandle();
             if (hwnd == IntPtr.Zero)
                 return false;
 

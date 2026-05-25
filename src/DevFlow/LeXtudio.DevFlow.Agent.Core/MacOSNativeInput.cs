@@ -15,7 +15,27 @@ public static class MacOSNativeInput
     private const ushort KVK_Delete = 0x33; // Backspace on macOS
     private const ushort KVK_ANSI_A = 0x00;
 
-    public static bool IsAvailable => RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+    // CGEventPost requires the process to have Accessibility permission (TCC).
+    // GitHub-hosted macOS runners don't grant it, so the call silently no-ops:
+    // we'd then falsely report "native" success without delivering events.
+    // Probe AXIsProcessTrusted at startup and refuse to report availability
+    // when untrusted, letting the agent fall through to the semantic /
+    // property-mutation paths that actually work.
+    private static readonly bool _isTrusted = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && TryProbeTrusted();
+
+    public static bool IsAvailable => _isTrusted;
+
+    private static bool TryProbeTrusted()
+    {
+        try
+        {
+            return AXIsProcessTrusted();
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     public static bool SendUnicodeText(string text)
     {
@@ -140,4 +160,8 @@ public static class MacOSNativeInput
 
     [DllImport(ApplicationServices)]
     private static extern void CFRelease(IntPtr cf);
+
+    [DllImport(ApplicationServices)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool AXIsProcessTrusted();
 }

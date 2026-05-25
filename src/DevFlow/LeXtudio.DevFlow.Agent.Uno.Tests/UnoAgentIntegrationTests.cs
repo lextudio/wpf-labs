@@ -350,7 +350,10 @@ public class UnoAgentIntegrationTests
                 new StringContent("{\"elementId\":\"ResponseText\",\"text\":\"Filled by test\"}", Encoding.UTF8, "application/json"));
             fillResponse.EnsureSuccessStatusCode();
             using var fillResultDoc = JsonDocument.Parse(await fillResponse.Content.ReadAsStreamAsync());
-            Assert.Equal("property-mutation", fillResultDoc.RootElement.GetProperty("simulationMode").GetString());
+            // Native input takes the path on Windows / Linux-Xvfb; macOS without
+            // Accessibility falls back to property-mutation. Either way the side
+            // effect (the text update) is what we really care about, asserted below.
+            Assert.Contains(fillResultDoc.RootElement.GetProperty("simulationMode").GetString(), new[] { "property-mutation", "native" });
 
             using var afterFill = await client.GetAsync("/api/v1/ui/element?id=ResponseText");
             afterFill.EnsureSuccessStatusCode();
@@ -362,7 +365,7 @@ public class UnoAgentIntegrationTests
                 new StringContent("{\"elementId\":\"ResponseText\"}", Encoding.UTF8, "application/json"));
             clearResponse.EnsureSuccessStatusCode();
             using var clearResultDoc = JsonDocument.Parse(await clearResponse.Content.ReadAsStreamAsync());
-            Assert.Equal("property-mutation", clearResultDoc.RootElement.GetProperty("simulationMode").GetString());
+            Assert.Contains(clearResultDoc.RootElement.GetProperty("simulationMode").GetString(), new[] { "property-mutation", "native" });
 
             using var afterClear = await client.GetAsync("/api/v1/ui/element?id=ResponseText");
             afterClear.EnsureSuccessStatusCode();
@@ -403,7 +406,11 @@ public class UnoAgentIntegrationTests
             keyResponse.EnsureSuccessStatusCode();
             using var keyDoc = JsonDocument.Parse(await keyResponse.Content.ReadAsStreamAsync());
             Assert.True(keyDoc.RootElement.GetProperty("success").GetBoolean());
-            Assert.Equal("semantic", keyDoc.RootElement.GetProperty("simulationMode").GetString());
+            var mode = keyDoc.RootElement.GetProperty("simulationMode").GetString();
+            // On platforms where the agent has a working native input path (Windows;
+            // Linux via XTest on Xvfb), Enter is delivered natively; elsewhere the
+            // agent falls through to the semantic acknowledgement.
+            Assert.Contains(mode, new[] { "semantic", "native" });
         }
         finally
         {
@@ -497,6 +504,13 @@ public class UnoAgentIntegrationTests
     [MemberData(nameof(UnoTestTargets))]
     public async Task FillEventProbe_ReportsPropertyMutationAndStillMissesTextChangingPipeline(string targetFramework)
     {
+        // This test documents the property-mutation fallback path: setting Text via
+        // reflection does NOT raise the TextChanging pipeline. On hosts where the
+        // agent has a working native input route (Windows, Linux+Xvfb) the native
+        // path runs instead and TextChanging fires legitimately, so the assertion
+        // doesn't apply. Limit the test to platforms without native input.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            return;
         var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
         var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
         var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
