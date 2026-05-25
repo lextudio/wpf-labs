@@ -334,13 +334,7 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
             if (!IsElementEnabled(target))
                 return null;
 
-            if (normalized is "enter" or "return")
-            {
-                if (TryNativeSpecialKey(target, VirtualKeyReturn))
-                    return CreateSuccessResult(SimulationModes.Native, elementId, key: keyValue, text: text);
-            }
-
-            if (!string.IsNullOrEmpty(insertText) && TryNativeTextInput(target, insertText, replace: false))
+            if (TryNativeKeyInput(target, normalized, insertText))
                 return CreateSuccessResult(SimulationModes.Native, elementId, key: keyValue, text: text);
 
             TryFocusElement(target);
@@ -1495,18 +1489,18 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             return false;
 
-        return TryNativeAction(element, point => WindowsNativeActions.TryTextInput(() => point, text, replace));
+        return TryNativeAction(element, resolver => WindowsNativeActions.TryTextInput(resolver, text, replace));
     }
 
-    private static bool TryNativeSpecialKey(object element, ushort virtualKey)
+    private static bool TryNativeKeyInput(object element, string normalizedKey, string? insertText)
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             return false;
 
-        return TryNativeAction(element, point => WindowsNativeActions.TrySpecialKey(() => point, virtualKey));
+        return TryNativeAction(element, resolver => WindowsNativeActions.TryKeyInput(resolver, normalizedKey, insertText));
     }
 
-    private static bool TryNativeAction(object element, Func<WindowsScreenPoint, bool> action)
+    private static bool TryNativeAction(object element, Func<Func<WindowsScreenPoint?>, bool> action)
     {
         try
         {
@@ -1523,31 +1517,12 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
             if (hwnd == IntPtr.Zero)
                 return false;
 
-            var point = TryGetElementClickPoint(element, hwnd);
-            return point is WindowsScreenPoint screenPoint && action(screenPoint);
+            return action(() => TryGetElementClickPoint(element, hwnd));
         }
         catch
         {
             return false;
         }
-    }
-
-    [SupportedOSPlatform("windows")]
-    private static bool TrySendChord(params ushort[] keys)
-    {
-        return WindowsNativeInput.TrySendChord(keys);
-    }
-
-    [SupportedOSPlatform("windows")]
-    private static bool TrySendVirtualKey(ushort key)
-    {
-        return WindowsNativeInput.TrySendVirtualKey(key);
-    }
-
-    [SupportedOSPlatform("windows")]
-    private static bool TrySendUnicodeText(string text)
-    {
-        return WindowsNativeInput.TrySendUnicodeText(text);
     }
 
     private static bool IsElementEnabled(object element)
@@ -1703,11 +1678,6 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
     {
         SRCCOPY = 0x00CC0020u,
     }
-
-    private const ushort VirtualKeyBackspace = WindowsNativeInput.VirtualKeyBackspace;
-    private const ushort VirtualKeyReturn = WindowsNativeInput.VirtualKeyReturn;
-    private const ushort VirtualKeyControl = WindowsNativeInput.VirtualKeyControl;
-    private const ushort VirtualKeyA = WindowsNativeInput.VirtualKeyA;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT

@@ -219,7 +219,7 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
                 return;
 
             result = ActionSimulationExecutor.Execute(
-                () => TryNativeTap(target) ? CreateSuccessResult(SimulationModes.Native, elementId) : null,
+                () => WindowsNativeActions.TryTap(target, TryGetWindowsScreenPoint) ? CreateSuccessResult(SimulationModes.Native, elementId) : null,
                 () => TryInvokeOnElement(target) ? CreateSuccessResult(SimulationModes.Reflection, elementId) : null);
         });
         return Task.FromResult(result);
@@ -292,7 +292,7 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
                 return;
 
             result = ActionSimulationExecutor.Execute(
-                () => TryNativeTextInput(target, text, replace: true) ? CreateSuccessResult(SimulationModes.Native, elementId, text: text) : null,
+                () => WindowsNativeActions.TryTextInput(target, TryGetWindowsScreenPoint, text, replace: true) ? CreateSuccessResult(SimulationModes.Native, elementId, text: text) : null,
                 () => TrySetTextValue(target, text) ? CreateSuccessResult(SimulationModes.PropertyMutation, elementId, text: text) : null);
         });
         return Task.FromResult(result);
@@ -349,7 +349,7 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
         app.Dispatcher.Invoke(() =>
         {
             var target = _treeWalker.FindElementObjectById(elementId);
-            if (target != null && TryNativeTap(target))
+            if (target != null && WindowsNativeActions.TryTap(target, TryGetWindowsScreenPoint))
             {
                 result = CreateSuccessResult(SimulationModes.Native, elementId);
                 return;
@@ -402,16 +402,7 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
 
             var current = ReadStringProperty(target, "Text") ?? ReadStringProperty(target, "Value") ?? string.Empty;
 
-            if (normalized is "enter" or "return")
-            {
-                if (TryNativeSpecialKey(target, WindowsNativeInput.VirtualKeyReturn))
-                {
-                    result = CreateSuccessResult(SimulationModes.Native, elementId, key: keyValue, text: text);
-                    return;
-                }
-            }
-
-            if (!string.IsNullOrEmpty(insertText) && TryNativeTextInput(target, insertText, replace: false))
+            if (WindowsNativeActions.TryKeyInput(target, TryGetWindowsScreenPoint, normalized, insertText))
             {
                 result = CreateSuccessResult(SimulationModes.Native, elementId, key: keyValue, text: text);
                 return;
@@ -505,15 +496,6 @@ public sealed class MewUIAgentService : DevFlowAgentServiceBase
 
         return false;
     }
-
-    private static bool TryNativeTap(object target)
-        => WindowsNativeActions.TryTap(() => TryGetWindowsScreenPoint(target));
-
-    private static bool TryNativeTextInput(object target, string text, bool replace)
-        => WindowsNativeActions.TryTextInput(() => TryGetWindowsScreenPoint(target), text, replace);
-
-    private static bool TryNativeSpecialKey(object target, ushort virtualKey)
-        => WindowsNativeActions.TrySpecialKey(() => TryGetWindowsScreenPoint(target), virtualKey);
 
     private static WindowsScreenPoint? TryGetWindowsScreenPoint(object target)
     {

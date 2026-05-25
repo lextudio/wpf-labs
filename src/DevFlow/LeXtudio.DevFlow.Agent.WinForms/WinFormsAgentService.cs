@@ -103,7 +103,7 @@ public sealed class WinFormsAgentService(AgentOptions? options = null) : DevFlow
                 return null;
 
             return ActionSimulationExecutor.Execute(
-                () => TryNativeTap(control) ? CreateSuccessResult(SimulationModes.Native, elementId) : null,
+                () => WindowsNativeActions.TryTap(control, TryGetScreenPoint) ? CreateSuccessResult(SimulationModes.Native, elementId) : null,
                 () =>
                 {
                     if (control is Button button)
@@ -164,7 +164,7 @@ public sealed class WinFormsAgentService(AgentOptions? options = null) : DevFlow
                 return null;
 
             return ActionSimulationExecutor.Execute(
-                () => TryNativeTextInput(control, text, replace: true) ? CreateSuccessResult(SimulationModes.Native, elementId, text: text) : null,
+                () => WindowsNativeActions.TryTextInput(control, TryGetScreenPoint, text, replace: true) ? CreateSuccessResult(SimulationModes.Native, elementId, text: text) : null,
                 () =>
                 {
                     var success = control switch
@@ -203,7 +203,7 @@ public sealed class WinFormsAgentService(AgentOptions? options = null) : DevFlow
                 return null;
 
             return ActionSimulationExecutor.Execute(
-                () => TryNativeTap(control) ? CreateSuccessResult(SimulationModes.Native, elementId) : null,
+                () => WindowsNativeActions.TryTap(control, TryGetScreenPoint) ? CreateSuccessResult(SimulationModes.Native, elementId) : null,
                 () =>
                 {
                     _ = control.Focus();
@@ -227,7 +227,7 @@ public sealed class WinFormsAgentService(AgentOptions? options = null) : DevFlow
             var keyValue = key ?? text ?? string.Empty;
             var insert = text ?? (string.IsNullOrWhiteSpace(key) ? null : key);
 
-            if (TryNativeKeyInput(tb, normalized, insert))
+            if (WindowsNativeActions.TryKeyInput(tb, TryGetScreenPoint, normalized, insert))
                 return CreateSuccessResult(SimulationModes.Native, elementId, key: keyValue, text: text);
 
             if (normalized is "backspace" or "delete")
@@ -388,27 +388,6 @@ public sealed class WinFormsAgentService(AgentOptions? options = null) : DevFlow
     {
         comboBox.Text = text;
         return true;
-    }
-
-    private static bool TryNativeTap(Control control)
-    {
-        return WindowsNativeActions.TryTap(() => TryGetScreenPoint(control));
-    }
-
-    private static bool TryNativeTextInput(Control control, string text, bool replace)
-    {
-        return WindowsNativeActions.TryTextInput(() => TryGetScreenPoint(control), text, replace);
-    }
-
-    private static bool TryNativeKeyInput(Control control, string normalizedKey, string? insertText)
-    {
-        if (normalizedKey is "enter" or "return")
-            return WindowsNativeActions.TrySpecialKey(() => TryGetScreenPoint(control), WindowsNativeInput.VirtualKeyReturn);
-
-        if (normalizedKey is "backspace" or "delete")
-            return WindowsNativeActions.TrySpecialKey(() => TryGetScreenPoint(control), WindowsNativeInput.VirtualKeyBackspace);
-
-        return !string.IsNullOrEmpty(insertText) && WindowsNativeActions.TryTextInput(() => TryGetScreenPoint(control), insertText, replace: false);
     }
 
     private static WindowsScreenPoint? TryGetScreenPoint(Control control)

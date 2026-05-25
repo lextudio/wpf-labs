@@ -228,7 +228,7 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
                 return null;
 
             return ActionSimulationExecutor.Execute(
-                () => target is FrameworkElement fe && TryNativeTap(fe) ? CreateSuccessResult(SimulationModes.Native, elementId) : null,
+                () => target is FrameworkElement fe && WindowsNativeActions.TryTap(fe, TryGetScreenPoint) ? CreateSuccessResult(SimulationModes.Native, elementId) : null,
                 () => TryInvokeOnElement(target) ? CreateSuccessResult(SimulationModes.Semantic, elementId) : null);
         }).Task ?? Task.FromResult<object?>(null);
     }
@@ -280,7 +280,7 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
                 return null;
 
             return ActionSimulationExecutor.Execute(
-                () => TryNativeTextInput(target, text, replace: true) ? CreateSuccessResult(SimulationModes.Native, elementId, text: text) : null,
+                () => target is FrameworkElement fe && WindowsNativeActions.TryTextInput(fe, TryGetScreenPoint, text, replace: true) ? CreateSuccessResult(SimulationModes.Native, elementId, text: text) : null,
                 () =>
                 {
                     var success = target switch
@@ -326,7 +326,7 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
                 return null;
 
             return ActionSimulationExecutor.Execute(
-                () => target is FrameworkElement fe && TryNativeTap(fe) ? CreateSuccessResult(SimulationModes.Native, elementId) : null,
+                () => target is FrameworkElement fe && WindowsNativeActions.TryTap(fe, TryGetScreenPoint) ? CreateSuccessResult(SimulationModes.Native, elementId) : null,
                 () =>
                 {
                     var success = target switch
@@ -356,7 +356,7 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
             if (target == null)
                 return null;
 
-            if (TryNativeKeyInput(target, normalized, insertText))
+            if (target is FrameworkElement fe && WindowsNativeActions.TryKeyInput(fe, TryGetScreenPoint, normalized, insertText))
                 return CreateSuccessResult(SimulationModes.Native, elementId, key: keyValue, text: text);
 
             var ok = target switch
@@ -463,33 +463,6 @@ public sealed class WpfAgentService : DevFlowAgentServiceBase
         }
 
         return false;
-    }
-
-    private static bool TryNativeTap(FrameworkElement element)
-    {
-        return WindowsNativeActions.TryTap(() => TryGetScreenPoint(element));
-    }
-
-    private static bool TryNativeTextInput(DependencyObject target, string text, bool replace)
-    {
-        if (!OperatingSystem.IsWindows() || target is not FrameworkElement fe)
-            return false;
-
-        return WindowsNativeActions.TryTextInput(() => TryGetScreenPoint(fe), text, replace);
-    }
-
-    private static bool TryNativeKeyInput(DependencyObject target, string normalizedKey, string? insertText)
-    {
-        if (!OperatingSystem.IsWindows() || target is not FrameworkElement fe)
-            return false;
-
-        if (normalizedKey is "enter" or "return")
-            return WindowsNativeActions.TrySpecialKey(() => TryGetScreenPoint(fe), WindowsNativeInput.VirtualKeyReturn);
-
-        if (normalizedKey is "backspace" or "delete")
-            return WindowsNativeActions.TrySpecialKey(() => TryGetScreenPoint(fe), WindowsNativeInput.VirtualKeyBackspace);
-
-        return !string.IsNullOrEmpty(insertText) && WindowsNativeActions.TryTextInput(() => TryGetScreenPoint(fe), insertText, replace: false);
     }
 
     private static WindowsScreenPoint? TryGetScreenPoint(FrameworkElement element)
