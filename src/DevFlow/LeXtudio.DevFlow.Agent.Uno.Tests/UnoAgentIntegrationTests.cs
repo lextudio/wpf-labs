@@ -536,6 +536,8 @@ public class UnoAgentIntegrationTests
     [MemberData(nameof(UnoDesktopOnlyTargets))]
     public async Task FillEventProbe_CanUseNativeTextInputOnDesktop(string targetFramework)
     {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            return; // TODO: enable if GitHub macOS runners allow CGEvent-based native text input, or once Uno implements a native text input path for macOS
         var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
         var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
         var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
@@ -582,6 +584,8 @@ public class UnoAgentIntegrationTests
     [MemberData(nameof(UnoDesktopOnlyTargets))]
     public async Task KeyText_CanUseNativeAppendOnDesktop(string targetFramework)
     {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return; // TODO: enable once macOS CGEvent / Linux X11 native paths land
         var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
         var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
         var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
@@ -632,6 +636,8 @@ public class UnoAgentIntegrationTests
     [MemberData(nameof(UnoDesktopOnlyTargets))]
     public async Task KeyEnter_CanUseNativeEnterOnDesktop(string targetFramework)
     {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return; // TODO: enable once macOS CGEvent / Linux X11 native paths land
         var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
         var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
         var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;

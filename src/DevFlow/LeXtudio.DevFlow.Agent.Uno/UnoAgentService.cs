@@ -1486,18 +1486,26 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
 
     private static bool TryNativeTextInput(object element, string text, bool replace)
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return TryNativeAction(element, resolver => WindowsNativeActions.TryTextInput(resolver, text, replace));
+
+        if (!PosixNativeActions.IsAvailable)
             return false;
 
-        return TryNativeAction(element, resolver => WindowsNativeActions.TryTextInput(resolver, text, replace));
+        TryFocusElement(element);
+        return PosixNativeActions.TryTextInput(text, replace);
     }
 
     private static bool TryNativeKeyInput(object element, string normalizedKey, string? insertText)
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return TryNativeAction(element, resolver => WindowsNativeActions.TryKeyInput(resolver, normalizedKey, insertText));
+
+        if (!PosixNativeActions.IsAvailable)
             return false;
 
-        return TryNativeAction(element, resolver => WindowsNativeActions.TryKeyInput(resolver, normalizedKey, insertText));
+        TryFocusElement(element);
+        return PosixNativeActions.TryKeyInput(normalizedKey, insertText);
     }
 
     private static bool TryNativeAction(object element, Func<Func<WindowsScreenPoint?>, bool> action)
