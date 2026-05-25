@@ -12,6 +12,9 @@
       "src/DevFlow/Microsoft.Maui.DevFlow.Logging/Microsoft.Maui.DevFlow.Logging.csproj",
       "src/DevFlow/LeXtudio.DevFlow.Agent.MewUI/LeXtudio.DevFlow.Agent.MewUI.csproj",
       "src/DevFlow/LeXtudio.DevFlow.Agent.MewUI.Tests/LeXtudio.DevFlow.Agent.MewUI.Tests.csproj",
+      "src/DevFlow/LeXtudio.DevFlow.Agent.WinForms/LeXtudio.DevFlow.Agent.WinForms.csproj",
+      "src/DevFlow/LeXtudio.DevFlow.Agent.WinForms.Tests/LeXtudio.DevFlow.Agent.WinForms.Tests.csproj",
+      "src/DevFlow/WinFormsDevFlowTestApp/WinFormsDevFlowTestApp.csproj",
       "src/DevFlow/MewUIDevFlowTestApp/MewUIDevFlowTestApp.csproj",
       "src/DevFlow/Microsoft.Maui.DevFlow.Tests/Microsoft.Maui.DevFlow.Tests.csproj"
     ]

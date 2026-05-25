@@ -4,9 +4,12 @@
 
 `LeXtudio.Wpf.Cli` should be the command-line companion for WPF developers on Windows. It should make tooling setup, project workflows, diagnostics, packaging, and DevFlow agent checks easier by providing a single, consistent CLI surface modeled after the MAUI CLI experience.
 
+The same CLI shape now also applies to `LeXtudio.WinForms.Cli`, exposed as `dotnet winflex`, for classic WinForms applications.
+
 ## Design Goals
 
 - Deliver a focused WPF-first CLI for Windows desktop development
+- Provide a parallel WinForms-first CLI with the same command structure where the underlying workflow maps cleanly to WinForms
 - Mirror MAUI CLI UX patterns: nested commands, `--help`, `--json`, `--ci`, and a structured error envelope
 - Provide project workflow commands plus environment validation and diagnostics
 - Support scripting and CI through JSON output and stable exit behavior
@@ -65,6 +68,11 @@
 - `dotnet wpflex devflow`
   - Query a running WPF DevFlow agent
   - Current implementation: `dotnet wpflex devflow status [--host <host>] [--port <port>]`
+
+- `dotnet winflex devflow`
+  - Query a running WinForms DevFlow agent
+  - Current implementation: `dotnet winflex devflow status [--host <host>] [--port <port>]`
+  - Additional DevFlow operations include screenshot capture and tap/action requests through the shared DevFlow HTTP API
 
 ## Proposed Future Commands
 
@@ -166,6 +174,8 @@ This design borrows the same high-level patterns as MAUI CLI while staying WPF-s
 - no Apple/Linux runtime toolchains
 - Windows SDK and MSBuild as primary platform concerns
 - a strong CLI-first developer experience for WPF apps and libraries
+
+The WinForms CLI follows the same alignment: it keeps Windows desktop development as the center of gravity while replacing WPF-specific project and runtime assumptions with WinForms equivalents.
 
 ## Notes
 

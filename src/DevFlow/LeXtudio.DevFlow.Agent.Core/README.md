@@ -19,13 +19,14 @@ dotnet add package LeXtudio.DevFlow.Agent.Core
 
 ## Usage
 
-This package is consumed by platform-specific runtime packages such as `LeXtudio.DevFlow.Agent.WPF`, `LeXtudio.DevFlow.Agent.Uno`, and `LeXtudio.DevFlow.Agent.MewUI`.
+This package is consumed by platform-specific runtime packages such as `LeXtudio.DevFlow.Agent.WPF`, `LeXtudio.DevFlow.Agent.WinForms`, `LeXtudio.DevFlow.Agent.Uno`, and `LeXtudio.DevFlow.Agent.MewUI`.
 
 Add a platform-specific agent package and register it in your app startup.
 
 ## Related Packages
 
 - [LeXtudio.DevFlow.Agent.WPF](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.WPF)
+- [LeXtudio.DevFlow.Agent.WinForms](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.WinForms)
 - [LeXtudio.DevFlow.Agent.Uno](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Uno)
 - [LeXtudio.DevFlow.Agent.MewUI](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.MewUI)
 - [LeXtudio.DevFlow.Driver](https://www.nuget.org/packages/LeXtudio.DevFlow.Driver)
@@ -33,4 +34,4 @@ Add a platform-specific agent package and register it in your app startup.
 ## Compatibility
 
 - .NET 8.0+
-- Used by WPF, Uno, and MewUI runtime packages
+- Used by WPF, WinForms, Uno, and MewUI runtime packages

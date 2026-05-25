@@ -10,6 +10,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LeXtudio.DevFlow.Agent.WPF.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfDevFlowTestApp", "WpfDevFlowTestApp\WpfDevFlowTestApp.csproj", "{D7E9C1C3-41B4-4C39-BEF1-649F75D3AED2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LeXtudio.DevFlow.Agent.WinForms", "LeXtudio.DevFlow.Agent.WinForms\LeXtudio.DevFlow.Agent.WinForms.csproj", "{A84C6BF7-C5C4-4DF3-B89B-CA8898E3B841}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LeXtudio.DevFlow.Agent.WinForms.Tests", "LeXtudio.DevFlow.Agent.WinForms.Tests\LeXtudio.DevFlow.Agent.WinForms.Tests.csproj", "{1577567F-434F-4373-8A32-24DF9A7E4B22}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFormsDevFlowTestApp", "WinFormsDevFlowTestApp\WinFormsDevFlowTestApp.csproj", "{681B7612-E957-4A2A-B3E4-744D1E67CE33}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,5 +38,17 @@ Global
 		{D7E9C1C3-41B4-4C39-BEF1-649F75D3AED2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D7E9C1C3-41B4-4C39-BEF1-649F75D3AED2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D7E9C1C3-41B4-4C39-BEF1-649F75D3AED2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A84C6BF7-C5C4-4DF3-B89B-CA8898E3B841}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A84C6BF7-C5C4-4DF3-B89B-CA8898E3B841}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A84C6BF7-C5C4-4DF3-B89B-CA8898E3B841}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A84C6BF7-C5C4-4DF3-B89B-CA8898E3B841}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1577567F-434F-4373-8A32-24DF9A7E4B22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1577567F-434F-4373-8A32-24DF9A7E4B22}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1577567F-434F-4373-8A32-24DF9A7E4B22}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1577567F-434F-4373-8A32-24DF9A7E4B22}.Release|Any CPU.Build.0 = Release|Any CPU
+		{681B7612-E957-4A2A-B3E4-744D1E67CE33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{681B7612-E957-4A2A-B3E4-744D1E67CE33}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{681B7612-E957-4A2A-B3E4-744D1E67CE33}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{681B7612-E957-4A2A-B3E4-744D1E67CE33}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

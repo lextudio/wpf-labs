@@ -6,6 +6,8 @@
     <Project Path="Cli/src/LeXtudio.MewUI.Cli.UnitTests/LeXtudio.MewUI.Cli.UnitTests.csproj" />
     <Project Path="Cli/src/LeXtudio.Uno.Cli/LeXtudio.Uno.Cli.csproj" />
     <Project Path="Cli/src/LeXtudio.Uno.Cli.UnitTests/LeXtudio.Uno.Cli.UnitTests.csproj" />
+    <Project Path="Cli/src/LeXtudio.WinForms.Cli/LeXtudio.WinForms.Cli.csproj" />
+    <Project Path="Cli/src/LeXtudio.WinForms.Cli.UnitTests/LeXtudio.WinForms.Cli.UnitTests.csproj" />
   </Folder>
   <Folder Name="/DevFlow/">
     <Project Path="DevFlow/LeXtudio.DevFlow.Driver/LeXtudio.DevFlow.Driver.csproj" />
@@ -13,5 +15,8 @@
     <Project Path="DevFlow/LeXtudio.DevFlow.Agent.WPF/LeXtudio.DevFlow.Agent.WPF.csproj" />
     <Project Path="DevFlow/LeXtudio.DevFlow.Agent.WPF.Tests/LeXtudio.DevFlow.Agent.WPF.Tests.csproj" />
     <Project Path="DevFlow/WpfDevFlowTestApp/WpfDevFlowTestApp.csproj" />
+    <Project Path="DevFlow/LeXtudio.DevFlow.Agent.WinForms/LeXtudio.DevFlow.Agent.WinForms.csproj" />
+    <Project Path="DevFlow/LeXtudio.DevFlow.Agent.WinForms.Tests/LeXtudio.DevFlow.Agent.WinForms.Tests.csproj" />
+    <Project Path="DevFlow/WinFormsDevFlowTestApp/WinFormsDevFlowTestApp.csproj" />
   </Folder>
 </Solution>
