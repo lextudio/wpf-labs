@@ -1440,14 +1440,39 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
 
         foreach (var hwnd in hwnds)
         {
-            return hwnd switch
-            {
-                IntPtr value => value,
-                long value => new IntPtr(value),
-                int value => new IntPtr(value),
-                _ => IntPtr.Zero
-            };
+            var unwrapped = UnwrapHandle(hwnd);
+            if (unwrapped != IntPtr.Zero)
+                return unwrapped;
         }
+
+        return IntPtr.Zero;
+    }
+
+    private static IntPtr UnwrapHandle(object? handle)
+    {
+        switch (handle)
+        {
+            case null:
+                return IntPtr.Zero;
+            case IntPtr value:
+                return value;
+            case long value:
+                return new IntPtr(value);
+            case int value:
+                return new IntPtr(value);
+        }
+
+        // CsWin32 wraps native handles in structs like HWND { nint Value; }.
+        // Probe for a Value field/property that yields an IntPtr-compatible
+        // value so we don't depend on the concrete struct type.
+        var type = handle.GetType();
+        var valueField = type.GetField("Value", BindingFlags.Public | BindingFlags.Instance);
+        if (valueField != null)
+            return UnwrapHandle(valueField.GetValue(handle));
+
+        var valueProperty = type.GetProperty("Value", BindingFlags.Public | BindingFlags.Instance);
+        if (valueProperty != null)
+            return UnwrapHandle(valueProperty.GetValue(handle));
 
         return IntPtr.Zero;
     }

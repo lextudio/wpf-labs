@@ -15,27 +15,17 @@ public static class MacOSNativeInput
     private const ushort KVK_Delete = 0x33; // Backspace on macOS
     private const ushort KVK_ANSI_A = 0x00;
 
-    // CGEventPost requires the process to have Accessibility permission (TCC).
-    // GitHub-hosted macOS runners don't grant it, so the call silently no-ops:
-    // we'd then falsely report "native" success without delivering events.
-    // Probe AXIsProcessTrusted at startup and refuse to report availability
-    // when untrusted, letting the agent fall through to the semantic /
-    // property-mutation paths that actually work.
-    private static readonly bool _isTrusted = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && TryProbeTrusted();
-
-    public static bool IsAvailable => _isTrusted;
-
-    private static bool TryProbeTrusted()
-    {
-        try
-        {
-            return AXIsProcessTrusted();
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    // CGEventPost requires Accessibility permission (TCC) to actually deliver
+    // events. AXIsProcessTrusted() is not a reliable signal on GitHub-hosted
+    // macOS runners — it returns true for terminal-launched non-sandboxed
+    // processes, yet the events still silently no-op. The agent would then
+    // falsely report "native" success without any side effect.
+    // The correct long-term fix is to bypass the global event tap entirely
+    // and post NSEvents directly into our own NSApp event queue (which is
+    // not TCC-gated). Until that lands, the macOS Posix native path is
+    // disabled so the agent falls through to property-mutation / semantic
+    // routes that do produce observable outcomes.
+    public static bool IsAvailable => false;
 
     public static bool SendUnicodeText(string text)
     {
@@ -160,8 +150,4 @@ public static class MacOSNativeInput
 
     [DllImport(ApplicationServices)]
     private static extern void CFRelease(IntPtr cf);
-
-    [DllImport(ApplicationServices)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    private static extern bool AXIsProcessTrusted();
 }
