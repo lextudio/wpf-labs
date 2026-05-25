@@ -38,14 +38,14 @@ public class WpfAgentIntegrationTests
         Assert.True(capabilities.GetProperty("webviewCdp").GetBoolean());
         Assert.True(capabilities.GetProperty("multiWindow").GetBoolean());
 
-        using var treeResponse = await client.GetAsync("/api/v1/ui/tree");
+        using var treeResponse = await GetAsync(client, "/api/v1/ui/tree");
         treeResponse.EnsureSuccessStatusCode();
-        using var treeDoc = JsonDocument.Parse(await treeResponse.Content.ReadAsStreamAsync());
+        using var treeDoc = JsonDocument.Parse(await ReadAsStreamAsync(treeResponse.Content));
         Assert.True(treeDoc.RootElement.GetProperty("elements").GetArrayLength() > 0);
 
-        using var screenshotResponse = await client.GetAsync("/api/v1/ui/screenshot");
+        using var screenshotResponse = await GetAsync(client, "/api/v1/ui/screenshot");
         screenshotResponse.EnsureSuccessStatusCode();
-        var screenshotBytes = await screenshotResponse.Content.ReadAsByteArrayAsync();
+        var screenshotBytes = await ReadAsByteArrayAsync(screenshotResponse.Content);
 
         Assert.NotEmpty(screenshotBytes);
         Assert.True(IsPng(screenshotBytes));
@@ -60,10 +60,10 @@ public class WpfAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(15));
 
-        using var screenshotResponse = await client.GetAsync("/api/v1/ui/screenshot");
+        using var screenshotResponse = await GetAsync(client, "/api/v1/ui/screenshot");
         screenshotResponse.EnsureSuccessStatusCode();
 
-        var screenshotBytes = await screenshotResponse.Content.ReadAsByteArrayAsync();
+        var screenshotBytes = await ReadAsByteArrayAsync(screenshotResponse.Content);
         Assert.NotEmpty(screenshotBytes);
         Assert.True(IsPng(screenshotBytes));
     }
@@ -79,16 +79,16 @@ public class WpfAgentIntegrationTests
 
         Assert.True(status.GetProperty("running").GetBoolean());
 
-        using var tapResponse = await client.PostAsync("/api/v1/ui/tap", new StringContent("{ \"id\": \"ActionButton\" }", System.Text.Encoding.UTF8, "application/json"));
+        using var tapResponse = await PostAsync(client, "/api/v1/ui/tap", new StringContent("{ \"id\": \"ActionButton\" }", System.Text.Encoding.UTF8, "application/json"));
         tapResponse.EnsureSuccessStatusCode();
-        using var tapDoc = JsonDocument.Parse(await tapResponse.Content.ReadAsStreamAsync());
+        using var tapDoc = JsonDocument.Parse(await ReadAsStreamAsync(tapResponse.Content));
         Assert.True(tapDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.True(tapDoc.RootElement.TryGetProperty("simulationMode", out var tapMode));
         Assert.Contains(tapMode.GetString(), new[] { "native", "semantic" });
 
-        using var elementResponse = await client.GetAsync("/api/v1/ui/element?id=ResponseText");
+        using var elementResponse = await GetAsync(client, "/api/v1/ui/element?id=ResponseText");
         elementResponse.EnsureSuccessStatusCode();
-        using var elementDoc = JsonDocument.Parse(await elementResponse.Content.ReadAsStreamAsync());
+        using var elementDoc = JsonDocument.Parse(await ReadAsStreamAsync(elementResponse.Content));
         var text = elementDoc.RootElement.GetProperty("text").GetString();
 
         Assert.False(string.IsNullOrWhiteSpace(text));
@@ -104,14 +104,14 @@ public class WpfAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(15));
 
-        using var scrollResponse = await client.PostAsync(
+        using var scrollResponse = await PostAsync(client, 
             "/api/v1/ui/actions/scroll",
             new StringContent("{ \"id\": \"MainScrollViewer\", \"deltaY\": 150 }", Encoding.UTF8, "application/json"));
         scrollResponse.EnsureSuccessStatusCode();
 
-        using var elementResponse = await client.GetAsync("/api/v1/ui/element?id=MainScrollViewer");
+        using var elementResponse = await GetAsync(client, "/api/v1/ui/element?id=MainScrollViewer");
         elementResponse.EnsureSuccessStatusCode();
-        using var elementDoc = JsonDocument.Parse(await elementResponse.Content.ReadAsStreamAsync());
+        using var elementDoc = JsonDocument.Parse(await ReadAsStreamAsync(elementResponse.Content));
         var offset = elementDoc.RootElement
             .GetProperty("frameworkProperties")
             .GetProperty("verticalOffset")
@@ -129,14 +129,14 @@ public class WpfAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(15));
 
-        using var scrollResponse = await client.PostAsync(
+        using var scrollResponse = await PostAsync(client, 
             "/api/v1/ui/actions/scroll",
             new StringContent("{ \"id\": \"MainScrollViewer\", \"deltaY\": 150 }", Encoding.UTF8, "application/json"));
         scrollResponse.EnsureSuccessStatusCode();
 
-        using var targetResponse = await client.GetAsync("/api/v1/ui/element?id=ScrollTargetText");
+        using var targetResponse = await GetAsync(client, "/api/v1/ui/element?id=ScrollTargetText");
         targetResponse.EnsureSuccessStatusCode();
-        using var targetDoc = JsonDocument.Parse(await targetResponse.Content.ReadAsStreamAsync());
+        using var targetDoc = JsonDocument.Parse(await ReadAsStreamAsync(targetResponse.Content));
         var text = targetDoc.RootElement.GetProperty("text").GetString();
 
         Assert.Equal("Scroll target is here!", text);
@@ -193,9 +193,9 @@ public class WpfAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(15));
 
-        using var response = await client.GetAsync("/api/v1/ui/element");
+        using var response = await GetAsync(client, "/api/v1/ui/element");
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStreamAsync());
+        using var doc = JsonDocument.Parse(await ReadAsStreamAsync(response.Content));
         Assert.False(doc.RootElement.GetProperty("success").GetBoolean());
         var error = doc.RootElement.GetProperty("error");
         if (error.ValueKind == JsonValueKind.Object)
@@ -216,17 +216,17 @@ public class WpfAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(15));
 
-        using var listResponse = await client.GetAsync("/api/v1/invoke/actions");
+        using var listResponse = await GetAsync(client, "/api/v1/invoke/actions");
         listResponse.EnsureSuccessStatusCode();
-        using var listDoc = JsonDocument.Parse(await listResponse.Content.ReadAsStreamAsync());
+        using var listDoc = JsonDocument.Parse(await ReadAsStreamAsync(listResponse.Content));
         var actions = listDoc.RootElement.GetProperty("actions").EnumerateArray().ToArray();
         Assert.Contains(actions, a => string.Equals(a.GetProperty("name").GetString(), "wpf.echo", StringComparison.OrdinalIgnoreCase));
 
-        using var invokeResponse = await client.PostAsync(
+        using var invokeResponse = await PostAsync(client, 
             "/api/v1/invoke/actions/wpf.echo",
             new StringContent("{\"args\":[\"hello\"]}", Encoding.UTF8, "application/json"));
         invokeResponse.EnsureSuccessStatusCode();
-        using var invokeDoc = JsonDocument.Parse(await invokeResponse.Content.ReadAsStreamAsync());
+        using var invokeDoc = JsonDocument.Parse(await ReadAsStreamAsync(invokeResponse.Content));
         Assert.True(invokeDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Equal("echo:hello", invokeDoc.RootElement.GetProperty("returnValue").GetString());
     }
@@ -249,11 +249,11 @@ public class WpfAgentIntegrationTests
                             }
                             """;
 
-        using var batchResponse = await client.PostAsync(
+        using var batchResponse = await PostAsync(client, 
             "/api/v1/ui/actions/batch",
             new StringContent(body, Encoding.UTF8, "application/json"));
         batchResponse.EnsureSuccessStatusCode();
-        using var batchDoc = JsonDocument.Parse(await batchResponse.Content.ReadAsStreamAsync());
+        using var batchDoc = JsonDocument.Parse(await ReadAsStreamAsync(batchResponse.Content));
         Assert.True(batchDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Equal(2, batchDoc.RootElement.GetProperty("results").GetArrayLength());
     }
@@ -267,11 +267,11 @@ public class WpfAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(15));
 
-        using var response = await client.PostAsync(
+        using var response = await PostAsync(client, 
             "/api/v1/ui/actions/focus",
             new StringContent("{\"elementId\":\"ActionButton\"}", Encoding.UTF8, "application/json"));
         response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStreamAsync());
+        using var doc = JsonDocument.Parse(await ReadAsStreamAsync(response.Content));
         Assert.True(doc.RootElement.GetProperty("success").GetBoolean());
         Assert.True(doc.RootElement.TryGetProperty("simulationMode", out var mode));
         Assert.Contains(mode.GetString(), new[] { "native", "semantic" });
@@ -286,16 +286,16 @@ public class WpfAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(15));
 
-        using var getResponse = await client.GetAsync("/api/v1/device/app/theme");
+        using var getResponse = await GetAsync(client, "/api/v1/device/app/theme");
         getResponse.EnsureSuccessStatusCode();
-        using var getDoc = JsonDocument.Parse(await getResponse.Content.ReadAsStreamAsync());
+        using var getDoc = JsonDocument.Parse(await ReadAsStreamAsync(getResponse.Content));
         Assert.True(getDoc.RootElement.TryGetProperty("supportedThemes", out _));
 
-        using var setResponse = await client.PutAsync(
+        using var setResponse = await PutAsync(client, 
             "/api/v1/device/app/theme",
             new StringContent("{\"theme\":\"light\"}", Encoding.UTF8, "application/json"));
         setResponse.EnsureSuccessStatusCode();
-        using var setDoc = JsonDocument.Parse(await setResponse.Content.ReadAsStreamAsync());
+        using var setDoc = JsonDocument.Parse(await ReadAsStreamAsync(setResponse.Content));
         Assert.Equal("light", setDoc.RootElement.GetProperty("userAppTheme").GetString());
         Assert.Equal("light", setDoc.RootElement.GetProperty("theme").GetString());
     }
@@ -308,10 +308,10 @@ public class WpfAgentIntegrationTests
         {
             try
             {
-                using var response = await client.GetAsync("/api/v1/agent/status");
+                using var response = await GetAsync(client, "/api/v1/agent/status");
                 if (response.IsSuccessStatusCode)
                 {
-                    using var doc = JsonDocument.Parse(await response.Content.ReadAsStreamAsync());
+                    using var doc = JsonDocument.Parse(await ReadAsStreamAsync(response.Content));
                     return doc.RootElement.Clone();
                 }
             }
@@ -322,7 +322,7 @@ public class WpfAgentIntegrationTests
             {
             }
 
-            await Task.Delay(250);
+            await Delay(250);
         }
 
         throw new InvalidOperationException("Agent status endpoint did not become available in time.");
@@ -341,10 +341,10 @@ public class WpfAgentIntegrationTests
         {
             try
             {
-                using var response = await client.GetAsync(path);
+                using var response = await GetAsync(client, path);
                 if (response.IsSuccessStatusCode)
                 {
-                    var bytes = await response.Content.ReadAsByteArrayAsync();
+                    var bytes = await ReadAsByteArrayAsync(response.Content);
                     if (bytes.Length > 0 && IsPng(bytes))
                         return bytes;
                 }
@@ -356,7 +356,7 @@ public class WpfAgentIntegrationTests
             {
             }
 
-            await Task.Delay(300);
+            await Delay(300);
         }
 
         throw new InvalidOperationException($"Screenshot endpoint did not return a PNG in time: {path}");
@@ -478,4 +478,12 @@ public class WpfAgentIntegrationTests
             return ValueTask.CompletedTask;
         }
     }
+
+    private static Task<HttpResponseMessage> GetAsync(HttpClient client, string requestUri) => client.GetAsync(requestUri, TestContext.Current.CancellationToken);
+    private static Task<HttpResponseMessage> PostAsync(HttpClient client, string requestUri, HttpContent content) => client.PostAsync(requestUri, content, TestContext.Current.CancellationToken);
+    private static Task<HttpResponseMessage> PutAsync(HttpClient client, string requestUri, HttpContent content) => client.PutAsync(requestUri, content, TestContext.Current.CancellationToken);
+    private static Task<Stream> ReadAsStreamAsync(HttpContent content) => content.ReadAsStreamAsync(TestContext.Current.CancellationToken);
+    private static Task<byte[]> ReadAsByteArrayAsync(HttpContent content) => content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+    private static Task Delay(int millisecondsTimeout) => Task.Delay(millisecondsTimeout, TestContext.Current.CancellationToken);
 }
+

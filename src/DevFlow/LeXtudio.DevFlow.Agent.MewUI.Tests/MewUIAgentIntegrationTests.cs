@@ -39,15 +39,15 @@ public class MewUIAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
 
-        using var tapResponse = await client.PostAsync("/api/v1/ui/tap", new StringContent("{ \"id\": \"ActionButton\" }", Encoding.UTF8, "application/json"));
+        using var tapResponse = await PostAsync(client, "/api/v1/ui/tap", new StringContent("{ \"id\": \"ActionButton\" }", Encoding.UTF8, "application/json"));
         tapResponse.EnsureSuccessStatusCode();
-        using var tapDoc = JsonDocument.Parse(await tapResponse.Content.ReadAsStreamAsync());
+        using var tapDoc = JsonDocument.Parse(await ReadAsStreamAsync(tapResponse.Content));
         Assert.True(tapDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Contains(tapDoc.RootElement.GetProperty("simulationMode").GetString(), new[] { "native", "reflection" });
 
-        using var elementResponse = await client.GetAsync("/api/v1/ui/element?id=ResponseText");
+        using var elementResponse = await GetAsync(client, "/api/v1/ui/element?id=ResponseText");
         elementResponse.EnsureSuccessStatusCode();
-        using var elementDoc = JsonDocument.Parse(await elementResponse.Content.ReadAsStreamAsync());
+        using var elementDoc = JsonDocument.Parse(await ReadAsStreamAsync(elementResponse.Content));
         var text = elementDoc.RootElement.GetProperty("text").GetString();
 
         Assert.False(string.IsNullOrWhiteSpace(text));
@@ -64,10 +64,10 @@ public class MewUIAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
 
-        using var screenshotResponse = await client.GetAsync("/api/v1/ui/screenshot");
+        using var screenshotResponse = await GetAsync(client, "/api/v1/ui/screenshot");
         screenshotResponse.EnsureSuccessStatusCode();
 
-        var screenshotBytes = await screenshotResponse.Content.ReadAsByteArrayAsync();
+        var screenshotBytes = await ReadAsByteArrayAsync(screenshotResponse.Content);
         Assert.NotEmpty(screenshotBytes);
         Assert.True(IsPng(screenshotBytes));
     }
@@ -82,27 +82,27 @@ public class MewUIAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
 
-        using var fillResponse = await client.PostAsync(
+        using var fillResponse = await PostAsync(client, 
             "/api/v1/ui/actions/fill",
             new StringContent("{\"elementId\":\"ResponseText\",\"text\":\"Filled by test\"}", Encoding.UTF8, "application/json"));
         fillResponse.EnsureSuccessStatusCode();
-        using var fillResultDoc = JsonDocument.Parse(await fillResponse.Content.ReadAsStreamAsync());
+        using var fillResultDoc = JsonDocument.Parse(await ReadAsStreamAsync(fillResponse.Content));
         Assert.True(fillResultDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Contains(fillResultDoc.RootElement.GetProperty("simulationMode").GetString(), new[] { "native", "property-mutation" });
 
-        using var afterFill = await client.GetAsync("/api/v1/ui/element?id=ResponseText");
+        using var afterFill = await GetAsync(client, "/api/v1/ui/element?id=ResponseText");
         afterFill.EnsureSuccessStatusCode();
-        using var fillDoc = JsonDocument.Parse(await afterFill.Content.ReadAsStreamAsync());
+        using var fillDoc = JsonDocument.Parse(await ReadAsStreamAsync(afterFill.Content));
         Assert.Equal("Filled by test", fillDoc.RootElement.GetProperty("text").GetString());
 
-        using var clearResponse = await client.PostAsync(
+        using var clearResponse = await PostAsync(client, 
             "/api/v1/ui/actions/clear",
             new StringContent("{\"elementId\":\"ResponseText\"}", Encoding.UTF8, "application/json"));
         clearResponse.EnsureSuccessStatusCode();
 
-        using var afterClear = await client.GetAsync("/api/v1/ui/element?id=ResponseText");
+        using var afterClear = await GetAsync(client, "/api/v1/ui/element?id=ResponseText");
         afterClear.EnsureSuccessStatusCode();
-        using var clearDoc = JsonDocument.Parse(await afterClear.Content.ReadAsStreamAsync());
+        using var clearDoc = JsonDocument.Parse(await ReadAsStreamAsync(afterClear.Content));
         Assert.Equal(string.Empty, clearDoc.RootElement.GetProperty("text").GetString());
     }
 
@@ -116,11 +116,11 @@ public class MewUIAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
 
-        using var keyResponse = await client.PostAsync(
+        using var keyResponse = await PostAsync(client, 
             "/api/v1/ui/actions/key",
             new StringContent("{\"elementId\":\"ResponseText\",\"key\":\"enter\"}", Encoding.UTF8, "application/json"));
         keyResponse.EnsureSuccessStatusCode();
-        using var keyDoc = JsonDocument.Parse(await keyResponse.Content.ReadAsStreamAsync());
+        using var keyDoc = JsonDocument.Parse(await ReadAsStreamAsync(keyResponse.Content));
         Assert.True(keyDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Contains(keyDoc.RootElement.GetProperty("simulationMode").GetString(), new[] { "native", "semantic" });
     }
@@ -135,11 +135,11 @@ public class MewUIAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
 
-        using var focusResponse = await client.PostAsync(
+        using var focusResponse = await PostAsync(client, 
             "/api/v1/ui/actions/focus",
             new StringContent("{\"elementId\":\"ActionButton\"}", Encoding.UTF8, "application/json"));
         focusResponse.EnsureSuccessStatusCode();
-        using var focusDoc = JsonDocument.Parse(await focusResponse.Content.ReadAsStreamAsync());
+        using var focusDoc = JsonDocument.Parse(await ReadAsStreamAsync(focusResponse.Content));
         Assert.True(focusDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Contains(focusDoc.RootElement.GetProperty("simulationMode").GetString(), new[] { "native", "semantic" });
     }
@@ -163,11 +163,11 @@ public class MewUIAgentIntegrationTests
                             }
                             """;
 
-        using var batchResponse = await client.PostAsync(
+        using var batchResponse = await PostAsync(client, 
             "/api/v1/ui/actions/batch",
             new StringContent(body, Encoding.UTF8, "application/json"));
         batchResponse.EnsureSuccessStatusCode();
-        using var batchDoc = JsonDocument.Parse(await batchResponse.Content.ReadAsStreamAsync());
+        using var batchDoc = JsonDocument.Parse(await ReadAsStreamAsync(batchResponse.Content));
         Assert.True(batchDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Equal(2, batchDoc.RootElement.GetProperty("results").GetArrayLength());
     }
@@ -182,16 +182,16 @@ public class MewUIAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
 
-        using var getResponse = await client.GetAsync("/api/v1/device/app/theme");
+        using var getResponse = await GetAsync(client, "/api/v1/device/app/theme");
         getResponse.EnsureSuccessStatusCode();
-        using var getDoc = JsonDocument.Parse(await getResponse.Content.ReadAsStreamAsync());
+        using var getDoc = JsonDocument.Parse(await ReadAsStreamAsync(getResponse.Content));
         Assert.True(getDoc.RootElement.TryGetProperty("supportedThemes", out _));
 
-        using var setResponse = await client.PutAsync(
+        using var setResponse = await PutAsync(client, 
             "/api/v1/device/app/theme",
             new StringContent("{\"theme\":\"light\"}", Encoding.UTF8, "application/json"));
         setResponse.EnsureSuccessStatusCode();
-        using var setDoc = JsonDocument.Parse(await setResponse.Content.ReadAsStreamAsync());
+        using var setDoc = JsonDocument.Parse(await ReadAsStreamAsync(setResponse.Content));
         Assert.Equal("light", setDoc.RootElement.GetProperty("userAppTheme").GetString());
         Assert.Equal("light", setDoc.RootElement.GetProperty("theme").GetString());
     }
@@ -204,10 +204,10 @@ public class MewUIAgentIntegrationTests
         {
             try
             {
-                using var response = await client.GetAsync("/api/v1/agent/status");
+                using var response = await GetAsync(client, "/api/v1/agent/status");
                 if (response.IsSuccessStatusCode)
                 {
-                    using var doc = JsonDocument.Parse(await response.Content.ReadAsStreamAsync());
+                    using var doc = JsonDocument.Parse(await ReadAsStreamAsync(response.Content));
                     return doc.RootElement.Clone();
                 }
             }
@@ -218,7 +218,7 @@ public class MewUIAgentIntegrationTests
             {
             }
 
-            await Task.Delay(250);
+            await Delay(250);
         }
 
         throw new InvalidOperationException("Agent status endpoint did not become available in time.");
@@ -420,4 +420,13 @@ public class MewUIAgentIntegrationTests
             return ValueTask.CompletedTask;
         }
     }
+
+    private static Task<HttpResponseMessage> GetAsync(HttpClient client, string requestUri) => client.GetAsync(requestUri, TestContext.Current.CancellationToken);
+    private static Task<HttpResponseMessage> PostAsync(HttpClient client, string requestUri, HttpContent content) => client.PostAsync(requestUri, content, TestContext.Current.CancellationToken);
+    private static Task<HttpResponseMessage> PutAsync(HttpClient client, string requestUri, HttpContent content) => client.PutAsync(requestUri, content, TestContext.Current.CancellationToken);
+    private static Task<Stream> ReadAsStreamAsync(HttpContent content) => content.ReadAsStreamAsync(TestContext.Current.CancellationToken);
+    private static Task<byte[]> ReadAsByteArrayAsync(HttpContent content) => content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+    private static Task Delay(int millisecondsTimeout) => Task.Delay(millisecondsTimeout, TestContext.Current.CancellationToken);
 }
+
+

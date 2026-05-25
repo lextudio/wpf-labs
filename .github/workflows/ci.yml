@@ -52,12 +52,11 @@ jobs:
       - name: Restore MewUI agent tests
         run: dotnet restore src/DevFlow/LeXtudio.DevFlow.Agent.MewUI.Tests/LeXtudio.DevFlow.Agent.MewUI.Tests.csproj
 
-      - name: Run CLI unit tests
-        run: |
-          dotnet test src/Cli/src/LeXtudio.Wpf.Cli.UnitTests/LeXtudio.Wpf.Cli.UnitTests.csproj --configuration Release --no-restore
-          dotnet test src/Cli/src/LeXtudio.WinForms.Cli.UnitTests/LeXtudio.WinForms.Cli.UnitTests.csproj --configuration Release --no-restore
-          dotnet test src/Cli/src/LeXtudio.MewUI.Cli.UnitTests/LeXtudio.MewUI.Cli.UnitTests.csproj --configuration Release --no-restore
-          dotnet test src/Cli/src/LeXtudio.Uno.Cli.UnitTests/LeXtudio.Uno.Cli.UnitTests.csproj --configuration Release --no-restore
+      - name: Run Uno agent tests
+        run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.Uno.Tests/LeXtudio.DevFlow.Agent.Uno.Tests.csproj --configuration Release --no-restore
+
+      - name: Run MewUI agent tests
+        run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.MewUI.Tests/LeXtudio.DevFlow.Agent.MewUI.Tests.csproj --configuration Release --no-restore
 
       - name: Run WPF agent tests
         run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.WPF.Tests/LeXtudio.DevFlow.Agent.WPF.Tests.csproj --configuration Release --no-restore
@@ -65,11 +64,12 @@ jobs:
       - name: Run WinForms agent tests
         run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.WinForms.Tests/LeXtudio.DevFlow.Agent.WinForms.Tests.csproj --configuration Release --no-restore
 
-      - name: Run Uno agent tests
-        run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.Uno.Tests/LeXtudio.DevFlow.Agent.Uno.Tests.csproj --configuration Release --no-restore
-
-      - name: Run MewUI agent tests
-        run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.MewUI.Tests/LeXtudio.DevFlow.Agent.MewUI.Tests.csproj --configuration Release --no-restore
+      - name: Run CLI unit tests
+        run: |
+          dotnet test src/Cli/src/LeXtudio.Wpf.Cli.UnitTests/LeXtudio.Wpf.Cli.UnitTests.csproj --configuration Release --no-restore
+          dotnet test src/Cli/src/LeXtudio.WinForms.Cli.UnitTests/LeXtudio.WinForms.Cli.UnitTests.csproj --configuration Release --no-restore
+          dotnet test src/Cli/src/LeXtudio.MewUI.Cli.UnitTests/LeXtudio.MewUI.Cli.UnitTests.csproj --configuration Release --no-restore
+          dotnet test src/Cli/src/LeXtudio.Uno.Cli.UnitTests/LeXtudio.Uno.Cli.UnitTests.csproj --configuration Release --no-restore
 
   uno:
     name: Uno tests
@@ -126,11 +126,11 @@ jobs:
       - name: Run Uno agent tests
         run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.Uno.Tests/LeXtudio.DevFlow.Agent.Uno.Tests.csproj --configuration Release --no-restore
 
+      - name: Run MewUI agent tests
+        run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.MewUI.Tests/LeXtudio.DevFlow.Agent.MewUI.Tests.csproj --configuration Release --no-restore
+
       - name: Run Uno CLI unit tests
         run: dotnet test src/Cli/src/LeXtudio.Uno.Cli.UnitTests/LeXtudio.Uno.Cli.UnitTests.csproj --configuration Release --no-restore
 
       - name: Run MewUI CLI unit tests
         run: dotnet test src/Cli/src/LeXtudio.MewUI.Cli.UnitTests/LeXtudio.MewUI.Cli.UnitTests.csproj --configuration Release --no-restore
-
-      - name: Run MewUI agent tests
-        run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.MewUI.Tests/LeXtudio.DevFlow.Agent.MewUI.Tests.csproj --configuration Release --no-restore

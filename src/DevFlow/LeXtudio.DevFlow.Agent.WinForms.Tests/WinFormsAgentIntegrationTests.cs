@@ -8,7 +8,6 @@ using Xunit;
 
 namespace LeXtudio.DevFlow.Agent.WinForms.Tests;
 
-#pragma warning disable xUnit1051
 public class WinFormsAgentIntegrationTests
 {
     [Fact]
@@ -34,9 +33,9 @@ public class WinFormsAgentIntegrationTests
         Assert.True(capabilities.GetProperty("webviewCdp").GetBoolean());
         Assert.True(capabilities.GetProperty("multiWindow").GetBoolean());
 
-        using var tree = await client.GetAsync("/api/v1/ui/tree");
+        using var tree = await GetAsync(client, "/api/v1/ui/tree");
         tree.EnsureSuccessStatusCode();
-        using var treeDoc = JsonDocument.Parse(await tree.Content.ReadAsStreamAsync());
+        using var treeDoc = JsonDocument.Parse(await ReadAsStreamAsync(tree.Content));
         Assert.True(treeDoc.RootElement.GetProperty("elements").GetArrayLength() > 0);
     }
 
@@ -49,9 +48,9 @@ public class WinFormsAgentIntegrationTests
         await PollStatusAsync(client, TimeSpan.FromSeconds(15));
         await WaitForElementAsync(client, "InputBox", TimeSpan.FromSeconds(10));
 
-        using var response = await client.GetAsync("/api/v1/ui/element?id=InputBox");
+        using var response = await GetAsync(client, "/api/v1/ui/element?id=InputBox");
         response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStreamAsync());
+        using var doc = JsonDocument.Parse(await ReadAsStreamAsync(response.Content));
         Assert.Equal("InputBox", doc.RootElement.GetProperty("id").GetString());
         Assert.Equal("TextBox", doc.RootElement.GetProperty("type").GetString());
     }
@@ -64,9 +63,9 @@ public class WinFormsAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollStatusAsync(client, TimeSpan.FromSeconds(15));
 
-        using var query = await client.GetAsync("/api/v1/ui/elements?type=TextBox");
+        using var query = await GetAsync(client, "/api/v1/ui/elements?type=TextBox");
         query.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await query.Content.ReadAsStreamAsync());
+        using var doc = JsonDocument.Parse(await ReadAsStreamAsync(query.Content));
         var elements = doc.RootElement.EnumerateArray().ToArray();
         Assert.Contains(elements, e => e.GetProperty("id").GetString() == "InputBox");
     }
@@ -82,38 +81,38 @@ public class WinFormsAgentIntegrationTests
         await WaitForElementAsync(client, "InputBox", TimeSpan.FromSeconds(10));
         await WaitForElementAsync(client, "ResponseLabel", TimeSpan.FromSeconds(10));
 
-        using var tapResponse = await client.PostAsync("/api/v1/ui/tap", Json("{" + "\"id\":\"ActionButton\"}"));
+        using var tapResponse = await PostAsync(client, "/api/v1/ui/tap", Json("{" + "\"id\":\"ActionButton\"}"));
         tapResponse.EnsureSuccessStatusCode();
-        using var tapDoc = JsonDocument.Parse(await tapResponse.Content.ReadAsStreamAsync());
+        using var tapDoc = JsonDocument.Parse(await ReadAsStreamAsync(tapResponse.Content));
         Assert.True(tapDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Contains(tapDoc.RootElement.GetProperty("simulationMode").GetString(), new[] { "native", "semantic" });
 
-        using var fillResponse = await client.PostAsync("/api/v1/ui/actions/fill", Json("{" + "\"elementId\":\"InputBox\",\"text\":\"hello\"}"));
+        using var fillResponse = await PostAsync(client, "/api/v1/ui/actions/fill", Json("{" + "\"elementId\":\"InputBox\",\"text\":\"hello\"}"));
         fillResponse.EnsureSuccessStatusCode();
-        using var fillDoc = JsonDocument.Parse(await fillResponse.Content.ReadAsStreamAsync());
+        using var fillDoc = JsonDocument.Parse(await ReadAsStreamAsync(fillResponse.Content));
         Assert.True(fillDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Contains(fillDoc.RootElement.GetProperty("simulationMode").GetString(), new[] { "native", "property-mutation" });
 
-        using var focusResponse = await client.PostAsync("/api/v1/ui/actions/focus", Json("{" + "\"elementId\":\"InputBox\"}"));
+        using var focusResponse = await PostAsync(client, "/api/v1/ui/actions/focus", Json("{" + "\"elementId\":\"InputBox\"}"));
         focusResponse.EnsureSuccessStatusCode();
-        using var focusDoc = JsonDocument.Parse(await focusResponse.Content.ReadAsStreamAsync());
+        using var focusDoc = JsonDocument.Parse(await ReadAsStreamAsync(focusResponse.Content));
         Assert.True(focusDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Contains(focusDoc.RootElement.GetProperty("simulationMode").GetString(), new[] { "native", "semantic" });
 
-        using var clearResponse = await client.PostAsync("/api/v1/ui/actions/clear", Json("{" + "\"elementId\":\"InputBox\"}"));
+        using var clearResponse = await PostAsync(client, "/api/v1/ui/actions/clear", Json("{" + "\"elementId\":\"InputBox\"}"));
         clearResponse.EnsureSuccessStatusCode();
-        using var clearDoc = JsonDocument.Parse(await clearResponse.Content.ReadAsStreamAsync());
+        using var clearDoc = JsonDocument.Parse(await ReadAsStreamAsync(clearResponse.Content));
         Assert.True(clearDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Contains(clearDoc.RootElement.GetProperty("simulationMode").GetString(), new[] { "native", "property-mutation" });
 
-        using var input = await client.GetAsync("/api/v1/ui/element?id=InputBox");
+        using var input = await GetAsync(client, "/api/v1/ui/element?id=InputBox");
         input.EnsureSuccessStatusCode();
-        using var inputDoc = JsonDocument.Parse(await input.Content.ReadAsStreamAsync());
+        using var inputDoc = JsonDocument.Parse(await ReadAsStreamAsync(input.Content));
         Assert.Equal(string.Empty, inputDoc.RootElement.GetProperty("text").GetString());
 
-        using var responseLabel = await client.GetAsync("/api/v1/ui/element?id=ResponseLabel");
+        using var responseLabel = await GetAsync(client, "/api/v1/ui/element?id=ResponseLabel");
         responseLabel.EnsureSuccessStatusCode();
-        using var labelDoc = JsonDocument.Parse(await responseLabel.Content.ReadAsStreamAsync());
+        using var labelDoc = JsonDocument.Parse(await ReadAsStreamAsync(responseLabel.Content));
         Assert.Equal("Button clicked", labelDoc.RootElement.GetProperty("text").GetString());
     }
 
@@ -126,16 +125,16 @@ public class WinFormsAgentIntegrationTests
         await PollStatusAsync(client, TimeSpan.FromSeconds(15));
         await WaitForElementAsync(client, "InputBox", TimeSpan.FromSeconds(10));
 
-        (await client.PostAsync("/api/v1/ui/actions/fill", Json("{\"elementId\":\"InputBox\",\"text\":\"hello\"}"))).EnsureSuccessStatusCode();
-        using var filled = await client.GetAsync("/api/v1/ui/element?id=InputBox");
+        (await PostAsync(client, "/api/v1/ui/actions/fill", Json("{\"elementId\":\"InputBox\",\"text\":\"hello\"}"))).EnsureSuccessStatusCode();
+        using var filled = await GetAsync(client, "/api/v1/ui/element?id=InputBox");
         filled.EnsureSuccessStatusCode();
-        using var filledDoc = JsonDocument.Parse(await filled.Content.ReadAsStreamAsync());
+        using var filledDoc = JsonDocument.Parse(await ReadAsStreamAsync(filled.Content));
         Assert.Equal("hello", filledDoc.RootElement.GetProperty("text").GetString());
 
-        (await client.PostAsync("/api/v1/ui/actions/clear", Json("{\"elementId\":\"InputBox\"}"))).EnsureSuccessStatusCode();
-        using var cleared = await client.GetAsync("/api/v1/ui/element?id=InputBox");
+        (await PostAsync(client, "/api/v1/ui/actions/clear", Json("{\"elementId\":\"InputBox\"}"))).EnsureSuccessStatusCode();
+        using var cleared = await GetAsync(client, "/api/v1/ui/element?id=InputBox");
         cleared.EnsureSuccessStatusCode();
-        using var clearedDoc = JsonDocument.Parse(await cleared.Content.ReadAsStreamAsync());
+        using var clearedDoc = JsonDocument.Parse(await ReadAsStreamAsync(cleared.Content));
         Assert.Equal(string.Empty, clearedDoc.RootElement.GetProperty("text").GetString());
     }
 
@@ -148,9 +147,9 @@ public class WinFormsAgentIntegrationTests
         await PollStatusAsync(client, TimeSpan.FromSeconds(15));
         await WaitForElementAsync(client, "InputBox", TimeSpan.FromSeconds(10));
 
-        using var response = await client.PostAsync("/api/v1/ui/actions/focus", Json("{\"elementId\":\"InputBox\"}"));
+        using var response = await PostAsync(client, "/api/v1/ui/actions/focus", Json("{\"elementId\":\"InputBox\"}"));
         response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStreamAsync());
+        using var doc = JsonDocument.Parse(await ReadAsStreamAsync(response.Content));
         Assert.True(doc.RootElement.GetProperty("success").GetBoolean());
         Assert.True(doc.RootElement.TryGetProperty("simulationMode", out _));
     }
@@ -164,9 +163,9 @@ public class WinFormsAgentIntegrationTests
         await PollStatusAsync(client, TimeSpan.FromSeconds(15));
         await WaitForElementAsync(client, "InputBox", TimeSpan.FromSeconds(10));
 
-        using var response = await client.PostAsync("/api/v1/ui/actions/key", Json("{\"elementId\":\"InputBox\",\"text\":\"A\"}"));
+        using var response = await PostAsync(client, "/api/v1/ui/actions/key", Json("{\"elementId\":\"InputBox\",\"text\":\"A\"}"));
         response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStreamAsync());
+        using var doc = JsonDocument.Parse(await ReadAsStreamAsync(response.Content));
         Assert.True(doc.RootElement.GetProperty("success").GetBoolean());
         Assert.Contains(doc.RootElement.GetProperty("simulationMode").GetString(), new[] { "native", "property-mutation" });
     }
@@ -182,25 +181,25 @@ public class WinFormsAgentIntegrationTests
         await WaitForElementAsync(client, "InputBox", TimeSpan.FromSeconds(10));
         await WaitForElementAsync(client, "MainScrollPanel", TimeSpan.FromSeconds(10));
 
-        using var fullShot = await client.GetAsync("/api/v1/ui/screenshot");
+        using var fullShot = await GetAsync(client, "/api/v1/ui/screenshot");
         fullShot.EnsureSuccessStatusCode();
-        var fullBytes = await fullShot.Content.ReadAsByteArrayAsync();
+        var fullBytes = await ReadAsByteArrayAsync(fullShot.Content);
         Assert.True(IsPng(fullBytes));
 
-        using var elementShot = await client.GetAsync("/api/v1/ui/screenshot?id=ActionButton");
+        using var elementShot = await GetAsync(client, "/api/v1/ui/screenshot?id=ActionButton");
         elementShot.EnsureSuccessStatusCode();
-        var elementBytes = await elementShot.Content.ReadAsByteArrayAsync();
+        var elementBytes = await ReadAsByteArrayAsync(elementShot.Content);
         Assert.True(IsPng(elementBytes));
 
-        using var selectorShot = await client.GetAsync("/api/v1/ui/screenshot?selector=%23ActionButton");
+        using var selectorShot = await GetAsync(client, "/api/v1/ui/screenshot?selector=%23ActionButton");
         selectorShot.EnsureSuccessStatusCode();
-        var selectorBytes = await selectorShot.Content.ReadAsByteArrayAsync();
+        var selectorBytes = await ReadAsByteArrayAsync(selectorShot.Content);
         Assert.True(IsPng(selectorBytes));
 
-        (await client.PostAsync("/api/v1/ui/actions/scroll", Json("{" + "\"id\":\"MainScrollPanel\",\"deltaY\":120}"))).EnsureSuccessStatusCode();
+        (await PostAsync(client, "/api/v1/ui/actions/scroll", Json("{" + "\"id\":\"MainScrollPanel\",\"deltaY\":120}"))).EnsureSuccessStatusCode();
 
-        (await client.PostAsync("/api/v1/ui/actions/key", Json("{" + "\"elementId\":\"InputBox\",\"text\":\"A\"}"))).EnsureSuccessStatusCode();
-        (await client.PostAsync("/api/v1/ui/actions/key", Json("{" + "\"elementId\":\"InputBox\",\"key\":\"backspace\"}"))).EnsureSuccessStatusCode();
+        (await PostAsync(client, "/api/v1/ui/actions/key", Json("{" + "\"elementId\":\"InputBox\",\"text\":\"A\"}"))).EnsureSuccessStatusCode();
+        (await PostAsync(client, "/api/v1/ui/actions/key", Json("{" + "\"elementId\":\"InputBox\",\"key\":\"backspace\"}"))).EnsureSuccessStatusCode();
     }
 
     [Fact]
@@ -240,9 +239,9 @@ public class WinFormsAgentIntegrationTests
         await PollStatusAsync(client, TimeSpan.FromSeconds(15));
 
         const string body = "{\"actions\":[{\"action\":\"tap\",\"elementId\":\"ActionButton\"},{\"action\":\"fill\",\"elementId\":\"InputBox\",\"text\":\"batch\"}]}";
-        using var response = await client.PostAsync("/api/v1/ui/actions/batch", Json(body));
+        using var response = await PostAsync(client, "/api/v1/ui/actions/batch", Json(body));
         response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStreamAsync());
+        using var doc = JsonDocument.Parse(await ReadAsStreamAsync(response.Content));
         Assert.True(doc.RootElement.GetProperty("success").GetBoolean());
         Assert.Equal(2, doc.RootElement.GetProperty("results").GetArrayLength());
     }
@@ -255,12 +254,12 @@ public class WinFormsAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollStatusAsync(client, TimeSpan.FromSeconds(15));
 
-        using var get = await client.GetAsync("/api/v1/device/app/theme");
+        using var get = await GetAsync(client, "/api/v1/device/app/theme");
         get.EnsureSuccessStatusCode();
-        using var getDoc = JsonDocument.Parse(await get.Content.ReadAsStreamAsync());
+        using var getDoc = JsonDocument.Parse(await ReadAsStreamAsync(get.Content));
         Assert.Equal("system", getDoc.RootElement.GetProperty("theme").GetString());
 
-        using var set = await client.PutAsync("/api/v1/device/app/theme", Json("{\"theme\":\"light\"}"));
+        using var set = await PutAsync(client, "/api/v1/device/app/theme", Json("{\"theme\":\"light\"}"));
         Assert.Equal(HttpStatusCode.BadRequest, set.StatusCode);
     }
 
@@ -272,15 +271,15 @@ public class WinFormsAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollStatusAsync(client, TimeSpan.FromSeconds(15));
 
-        using var list = await client.GetAsync("/api/v1/invoke/actions");
+        using var list = await GetAsync(client, "/api/v1/invoke/actions");
         list.EnsureSuccessStatusCode();
-        using var listDoc = JsonDocument.Parse(await list.Content.ReadAsStreamAsync());
+        using var listDoc = JsonDocument.Parse(await ReadAsStreamAsync(list.Content));
         var actions = listDoc.RootElement.GetProperty("actions").EnumerateArray().ToArray();
         Assert.Contains(actions, a => string.Equals(a.GetProperty("name").GetString(), "winforms.echo", StringComparison.OrdinalIgnoreCase));
 
-        using var invoke = await client.PostAsync("/api/v1/invoke/actions/winforms.echo", Json("{\"args\":[\"hello\"]}"));
+        using var invoke = await PostAsync(client, "/api/v1/invoke/actions/winforms.echo", Json("{\"args\":[\"hello\"]}"));
         invoke.EnsureSuccessStatusCode();
-        using var invokeDoc = JsonDocument.Parse(await invoke.Content.ReadAsStreamAsync());
+        using var invokeDoc = JsonDocument.Parse(await ReadAsStreamAsync(invoke.Content));
         Assert.True(invokeDoc.RootElement.GetProperty("success").GetBoolean());
         Assert.Equal("echo:hello", invokeDoc.RootElement.GetProperty("returnValue").GetString());
     }
@@ -294,9 +293,9 @@ public class WinFormsAgentIntegrationTests
         await PollStatusAsync(client, TimeSpan.FromSeconds(15));
         await WaitForElementAsync(client, "WebViewHost", TimeSpan.FromSeconds(10));
 
-        using var contexts = await client.GetAsync("/api/v1/webview/contexts");
+        using var contexts = await GetAsync(client, "/api/v1/webview/contexts");
         contexts.EnsureSuccessStatusCode();
-        using var contextsDoc = JsonDocument.Parse(await contexts.Content.ReadAsStreamAsync());
+        using var contextsDoc = JsonDocument.Parse(await ReadAsStreamAsync(contexts.Content));
         var contextList = contextsDoc.RootElement.GetProperty("contexts").EnumerateArray().ToArray();
         Assert.Contains(contextList, c => c.GetProperty("id").GetString() == "WebViewHost");
 
@@ -304,11 +303,11 @@ public class WinFormsAgentIntegrationTests
         Assert.NotEmpty(screenshotBytes);
         Assert.True(IsPng(screenshotBytes));
 
-        using var cdp = await client.PostAsync(
+        using var cdp = await PostAsync(client, 
             "/api/v1/webview/cdp",
             Json("{\"context\":\"WebViewHost\",\"method\":\"Runtime.evaluate\",\"params\":{\"expression\":\"document.getElementById('title').textContent\"}}"));
         cdp.EnsureSuccessStatusCode();
-        using var cdpDoc = JsonDocument.Parse(await cdp.Content.ReadAsStreamAsync());
+        using var cdpDoc = JsonDocument.Parse(await ReadAsStreamAsync(cdp.Content));
         Assert.Contains("DevFlow WinForms WebView Test", cdpDoc.RootElement.GetProperty("result").GetProperty("value").GetString(), StringComparison.Ordinal);
     }
 
@@ -320,10 +319,10 @@ public class WinFormsAgentIntegrationTests
         using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
         await PollStatusAsync(client, TimeSpan.FromSeconds(15));
 
-        using var query = await client.GetAsync("/api/v1/ui/elements?type=TextBox");
+        using var query = await GetAsync(client, "/api/v1/ui/elements?type=TextBox");
         query.EnsureSuccessStatusCode();
 
-        using var bad = await client.GetAsync("/api/v1/ui/element");
+        using var bad = await GetAsync(client, "/api/v1/ui/element");
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
     }
 
@@ -340,10 +339,10 @@ public class WinFormsAgentIntegrationTests
         {
             try
             {
-                using var response = await client.GetAsync(path);
+                using var response = await GetAsync(client, path);
                 if (response.IsSuccessStatusCode)
                 {
-                    var bytes = await response.Content.ReadAsByteArrayAsync();
+                    var bytes = await ReadAsByteArrayAsync(response.Content);
                     if (bytes.Length > 0 && IsPng(bytes))
                         return bytes;
                 }
@@ -352,7 +351,7 @@ public class WinFormsAgentIntegrationTests
             {
             }
 
-            await Task.Delay(300);
+            await Delay(300);
         }
 
         throw new InvalidOperationException($"Screenshot endpoint did not return a PNG in time: {path}");
@@ -366,15 +365,15 @@ public class WinFormsAgentIntegrationTests
         {
             try
             {
-                using var response = await client.GetAsync("/api/v1/agent/status");
+                using var response = await GetAsync(client, "/api/v1/agent/status");
                 if (response.IsSuccessStatusCode)
                 {
-                    using var doc = JsonDocument.Parse(await response.Content.ReadAsStreamAsync());
+                    using var doc = JsonDocument.Parse(await ReadAsStreamAsync(response.Content));
                     return doc.RootElement.Clone();
                 }
             }
             catch { }
-            await Task.Delay(250);
+            await Delay(250);
         }
 
         throw new InvalidOperationException("Agent status endpoint did not become available in time.");
@@ -394,13 +393,13 @@ public class WinFormsAgentIntegrationTests
         {
             try
             {
-                using var response = await client.GetAsync($"/api/v1/ui/element?id={Uri.EscapeDataString(elementId)}");
+                using var response = await GetAsync(client, $"/api/v1/ui/element?id={Uri.EscapeDataString(elementId)}");
                 if (response.IsSuccessStatusCode)
                     return;
             }
             catch { }
 
-            await Task.Delay(200);
+            await Delay(200);
         }
 
         throw new InvalidOperationException($"Element '{elementId}' was not available in time.");
@@ -425,7 +424,7 @@ public class WinFormsAgentIntegrationTests
         psi.Environment["DEVFLOW_AGENT_PORT"] = port.ToString();
 
         var process = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start host process.");
-        await Task.Delay(300);
+        await Delay(300);
         return new DisposableProcessHost(process);
     }
 
@@ -470,4 +469,13 @@ public class WinFormsAgentIntegrationTests
             return ValueTask.CompletedTask;
         }
     }
+
+    private static Task<HttpResponseMessage> GetAsync(HttpClient client, string requestUri) => client.GetAsync(requestUri, TestContext.Current.CancellationToken);
+    private static Task<HttpResponseMessage> PostAsync(HttpClient client, string requestUri, HttpContent content) => client.PostAsync(requestUri, content, TestContext.Current.CancellationToken);
+    private static Task<HttpResponseMessage> PutAsync(HttpClient client, string requestUri, HttpContent content) => client.PutAsync(requestUri, content, TestContext.Current.CancellationToken);
+    private static Task<Stream> ReadAsStreamAsync(HttpContent content) => content.ReadAsStreamAsync(TestContext.Current.CancellationToken);
+    private static Task<byte[]> ReadAsByteArrayAsync(HttpContent content) => content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+    private static Task Delay(int millisecondsTimeout) => Task.Delay(millisecondsTimeout, TestContext.Current.CancellationToken);
 }
+
+
