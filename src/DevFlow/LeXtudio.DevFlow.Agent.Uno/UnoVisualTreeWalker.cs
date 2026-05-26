@@ -178,36 +178,79 @@ public sealed class UnoVisualTreeWalker : IVisualTreeWalker
         if (element == null)
             return null;
 
-        var elementInfo = new ElementInfo
+        // Build the element info defensively. Uno's partially-implemented controls (most notably
+        // WebView2 on net10.0-desktop) throw NotImplementedException from many properties; a
+        // single bad property must not abort the entire walk. Each helper below already
+        // tolerates exceptions, but we still wrap the whole thing in case a future getter throws
+        // from somewhere we don't expect.
+        ElementInfo elementInfo;
+        try
         {
-            Id = GetElementId(element) ?? string.Empty,
-            ParentId = parentId,
-            Type = element.GetType().Name,
-            FullType = element.GetType().FullName ?? string.Empty,
-            Framework = "uno",
-            AutomationId = GetElementId(element),
-            Text = GetElementText(element),
-            IsVisible = GetBoolProperty(element, "Visibility", true) && GetBoolProperty(element, "IsVisible", true),
-            IsEnabled = GetBoolProperty(element, "IsEnabled", true),
-            IsFocused = GetBoolProperty(element, "IsFocused", false),
-            Opacity = GetDoubleProperty(element, "Opacity", 1.0),
-            NativeType = element.GetType().FullName,
-            FrameworkProperties = GetFrameworkProperties(element)
-        };
+            elementInfo = new ElementInfo
+            {
+                Id = SafeGet(() => GetElementId(element)) ?? string.Empty,
+                ParentId = parentId,
+                Type = element.GetType().Name,
+                FullType = element.GetType().FullName ?? string.Empty,
+                Framework = "uno",
+                AutomationId = SafeGet(() => GetElementId(element)),
+                Text = SafeGet(() => GetElementText(element)),
+                IsVisible = SafeGet(() => GetBoolProperty(element, "Visibility", true) && GetBoolProperty(element, "IsVisible", true), true),
+                IsEnabled = SafeGet(() => GetBoolProperty(element, "IsEnabled", true), true),
+                IsFocused = SafeGet(() => GetBoolProperty(element, "IsFocused", false), false),
+                Opacity = SafeGet(() => GetDoubleProperty(element, "Opacity", 1.0), 1.0),
+                NativeType = element.GetType().FullName,
+                FrameworkProperties = SafeGet(() => GetFrameworkProperties(element)) ?? new Dictionary<string, string?>()
+            };
+        }
+        catch
+        {
+            // Element couldn't be described — emit a stub entry so the parent's child list stays
+            // consistent and the walker continues.
+            elementInfo = new ElementInfo
+            {
+                Id = string.Empty,
+                ParentId = parentId,
+                Type = SafeGet(() => element.GetType().Name) ?? "Unknown",
+                FullType = SafeGet(() => element.GetType().FullName) ?? string.Empty,
+                Framework = "uno",
+                IsVisible = true,
+                IsEnabled = true,
+                Opacity = 1.0,
+                FrameworkProperties = new Dictionary<string, string?>()
+            };
+        }
 
-        var children = GetChildren(element);
+        List<object> children;
+        try { children = GetChildren(element); }
+        catch { children = new List<object>(); }
+
         if (children.Count > 0)
         {
             elementInfo.Children = new List<ElementInfo>();
             foreach (var child in children)
             {
-                var childInfo = CreateElementInfo(child, elementInfo.Id);
+                ElementInfo? childInfo = null;
+                try { childInfo = CreateElementInfo(child, elementInfo.Id); }
+                catch { /* skip the child, keep walking siblings */ }
                 if (childInfo != null)
                     elementInfo.Children.Add(childInfo);
             }
         }
 
         return elementInfo;
+    }
+
+    private static T? SafeGet<T>(Func<T?> getter) where T : class
+    {
+        try { return getter(); }
+        catch { return null; }
+    }
+
+    private static T SafeGet<T>(Func<T> getter, T fallback) where T : struct
+    {
+        try { return getter(); }
+        catch { return fallback; }
     }
 
     private List<object> GetChildren(object element)
@@ -300,8 +343,15 @@ public sealed class UnoVisualTreeWalker : IVisualTreeWalker
         if (getAutomationId == null)
             return null;
 
-        var value = getAutomationId.Invoke(null, new[] { element });
-        return value as string;
+        try
+        {
+            var value = getAutomationId.Invoke(null, new[] { element });
+            return value as string;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private string? GetElementText(object element)
@@ -365,7 +415,19 @@ public sealed class UnoVisualTreeWalker : IVisualTreeWalker
             return null;
 
         var property = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        return property?.GetValue(target);
+        if (property == null)
+            return null;
+
+        try
+        {
+            return property.GetValue(target);
+        }
+        catch
+        {
+            // Uno's WebView2 (and other partially-implemented controls) throw NotImplementedException
+            // for many properties. Swallow so the visual-tree walk can continue past these elements.
+            return null;
+        }
     }
 
     private object? GetCurrentWindow()

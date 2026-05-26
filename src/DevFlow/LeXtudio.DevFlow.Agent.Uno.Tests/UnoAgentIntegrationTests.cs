@@ -290,6 +290,201 @@ public class UnoAgentIntegrationTests
         }
     }
 
+    // Regression test for DevFlow bug: UnoAgentService never overrode GetWebViewContextsAsync
+    // so /api/v1/webview/contexts always returned an empty list. The fix added an override that
+    // enumerates WebView2 descendants via both the visual tree and logical children.
+    [Theory]
+    [MemberData(nameof(UnoDesktopOnlyTargets))]
+    public async Task WebView_Contexts_ListsWebView2(string targetFramework)
+    {
+        var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
+        var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
+        var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
+        BuildHostProject(hostProjectPath, targetFramework, hostProjectDirectory);
+        var exePath = GetHostExecutablePath(hostProjectDirectory, targetFramework);
+        var port = GetFreePort();
+        using var process = StartHiddenProcess(exePath, hostProjectDirectory, port);
+        if (process == null || process.HasExited)
+            throw new InvalidOperationException("Failed to start the Uno host process.");
+
+        try
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+            await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+            JsonElement contexts = default;
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
+            while (DateTime.UtcNow < deadline)
+            {
+                using var response = await GetAsync(client, "/api/v1/webview/contexts");
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+                    using var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("contexts", out var arr) && arr.GetArrayLength() > 0)
+                    {
+                        contexts = arr.Clone();
+                        break;
+                    }
+                }
+                await Delay(250);
+            }
+
+            Assert.True(contexts.ValueKind == JsonValueKind.Array && contexts.GetArrayLength() > 0,
+                "Expected /api/v1/webview/contexts to list the WebView2 element 'WebViewHost'.");
+            var first = contexts[0];
+            Assert.Equal("webview2", first.GetProperty("type").GetString());
+            var id = first.GetProperty("id").GetString();
+            Assert.Equal("WebViewHost", id);
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+                process.WaitForExit(5000);
+            }
+        }
+    }
+
+    // Regression test for DevFlow bug: ExecuteScriptAsync was cast `as Task<string>`, which fails on
+    // Uno's Microsoft.UI WebView2 (returns IAsyncOperation<string>), causing every Runtime.evaluate
+    // CDP call to throw on the cast. The fix routes through AsTask<T>(IAsyncOperation<T>).
+    //
+    // Note: even with the cast fix, Uno's WebView2.CoreWebView2.ExecuteScriptAsync on net10.0-desktop
+    // currently returns a null script result (the AsyncOperation completes successfully but with a
+    // null payload). This is an Uno Platform WebView2 limitation, not a DevFlow bug. We therefore
+    // only assert that the CDP endpoint reaches CoreWebView2 cleanly and produces a well-formed
+    // response — proving the DevFlow pipeline (context discovery + async-shape handling) is intact.
+    [Theory]
+    [MemberData(nameof(UnoDesktopOnlyTargets))]
+    public async Task WebView_Cdp_RuntimeEvaluate_ReachesCoreWebView2(string targetFramework)
+    {
+        var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
+        var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
+        var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
+        BuildHostProject(hostProjectPath, targetFramework, hostProjectDirectory);
+        var exePath = GetHostExecutablePath(hostProjectDirectory, targetFramework);
+        var port = GetFreePort();
+        using var process = StartHiddenProcess(exePath, hostProjectDirectory, port);
+        if (process == null || process.HasExited)
+            throw new InvalidOperationException("Failed to start the Uno host process.");
+
+        try
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+            await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+            // Wait until /webview/contexts reports the WebView2 (CoreWebView2 may take time to init).
+            var contextsDeadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
+            bool hasContexts = false;
+            while (DateTime.UtcNow < contextsDeadline)
+            {
+                using var ctxResp = await GetAsync(client, "/api/v1/webview/contexts");
+                if (ctxResp.IsSuccessStatusCode)
+                {
+                    var ctxJson = await ctxResp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+                    using var ctxDoc = JsonDocument.Parse(ctxJson);
+                    if (ctxDoc.RootElement.TryGetProperty("contexts", out var arr) && arr.GetArrayLength() > 0)
+                    {
+                        hasContexts = true;
+                        break;
+                    }
+                }
+                await Delay(250);
+            }
+            Assert.True(hasContexts, "WebView2 context was never discovered.");
+
+            // Issue the CDP eval. It must return a well-formed JSON response with no error field
+            // and no 'cast failed / not implemented' exception leaking out.
+            var payload = JsonSerializer.Serialize(new
+            {
+                context = "WebViewHost",
+                method = "Runtime.evaluate",
+                @params = new { expression = "1+1" }
+            });
+            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            using var response = await PostAsync(client, "/api/v1/webview/cdp", content);
+            Assert.True(response.IsSuccessStatusCode, $"CDP HTTP failed: {(int)response.StatusCode}");
+            var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            using var doc = JsonDocument.Parse(json);
+            Assert.False(doc.RootElement.TryGetProperty("error", out _),
+                $"CDP returned an error field; pipeline still broken: {json}");
+            Assert.True(doc.RootElement.TryGetProperty("result", out var result),
+                $"CDP response missing 'result' field: {json}");
+            Assert.True(result.TryGetProperty("value", out _),
+                $"CDP result missing 'value' field: {json}");
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+                process.WaitForExit(5000);
+            }
+        }
+    }
+
+    // Regression test for DevFlow bug: UnoVisualTreeWalker.GetPropertyValue did not catch
+    // NotImplementedException, so any element whose properties throw (Uno WebView2 in particular)
+    // would abort the entire visual-tree walk and /api/v1/ui/tree returned "response ended prematurely".
+    [Theory]
+    [MemberData(nameof(UnoDesktopOnlyTargets))]
+    public async Task UiTree_DoesNotCrashOnWebView2(string targetFramework)
+    {
+        var repoRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
+        var hostProjectPath = Path.GetFullPath(Path.Combine(repoRoot, "src", "DevFlow", "UnoDevFlowTestApp", "UnoDevFlowTestApp", "UnoDevFlowTestApp.csproj"));
+        var hostProjectDirectory = Path.GetDirectoryName(hostProjectPath)!;
+        BuildHostProject(hostProjectPath, targetFramework, hostProjectDirectory);
+        var exePath = GetHostExecutablePath(hostProjectDirectory, targetFramework);
+        var port = GetFreePort();
+        using var process = StartHiddenProcess(exePath, hostProjectDirectory, port);
+        if (process == null || process.HasExited)
+            throw new InvalidOperationException("Failed to start the Uno host process.");
+
+        try
+        {
+            using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+            await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
+
+            using var response = await GetAsync(client, "/api/v1/ui/tree");
+            Assert.True(response.IsSuccessStatusCode, $"Tree request failed: {(int)response.StatusCode}");
+            var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            Assert.False(string.IsNullOrEmpty(body), "Tree response body was empty — walk likely aborted.");
+            Assert.Contains("WebViewHost", body);
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(true);
+                process.WaitForExit(5000);
+            }
+        }
+    }
+
+    private static async Task<string?> EvaluateInWebViewAsync(HttpClient client, string contextId, string expression)
+    {
+        var payload = JsonSerializer.Serialize(new
+        {
+            context = contextId,
+            method = "Runtime.evaluate",
+            @params = new { expression }
+        });
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        using var response = await PostAsync(client, "/api/v1/webview/cdp", content);
+        if (!response.IsSuccessStatusCode)
+            return null;
+        var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.TryGetProperty("result", out var result)
+            && result.TryGetProperty("value", out var value))
+        {
+            return value.ValueKind == JsonValueKind.Null ? null : value.GetString();
+        }
+        return null;
+    }
+
     [Theory]
     [MemberData(nameof(UnoTestTargets))]
     public async Task ElementScreenshot_ReturnsValidPng(string targetFramework)

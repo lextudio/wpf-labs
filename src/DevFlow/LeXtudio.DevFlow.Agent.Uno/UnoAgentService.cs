@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,6 +7,7 @@ using System.Reflection;
 using System.Runtime.Versioning;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using LeXtudio.DevFlow.Agent.Core;
 using Microsoft.Maui.DevFlow.Agent.Core;
@@ -571,6 +573,39 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         return InvokeOnUiThreadAsync(() => SendWebViewCdpCommandOnUiThread(contextId, method, @params));
     }
 
+    protected override Task<object?> GetWebViewContextsAsync()
+    {
+        return InvokeOnUiThreadAsync<object?>(GetWebViewContextsOnUiThread);
+    }
+
+    private object GetWebViewContextsOnUiThread()
+    {
+        var webView2Type = FindType("Microsoft.UI.Xaml.Controls.WebView2");
+        if (webView2Type == null)
+            return new { contexts = Array.Empty<object>() };
+
+        var webViews = EnumerateWebView2Descendants(GetRootVisual(), webView2Type).ToList();
+        var contexts = new List<object>();
+
+        foreach (var webView in webViews)
+        {
+            var name = SafeGetPropertyString(webView, "Name");
+            var automationId = SafeGetPropertyString(webView, "AutomationId");
+            var id = !string.IsNullOrWhiteSpace(automationId)
+                ? automationId
+                : !string.IsNullOrWhiteSpace(name) ? name : $"webview-{contexts.Count + 1}";
+            contexts.Add(new { id, type = "webview2", title = name ?? id });
+        }
+
+        return new { contexts };
+    }
+
+    private static string? SafeGetPropertyString(object target, string propertyName)
+    {
+        try { return GetPropertyValue(target, propertyName) as string; }
+        catch { return null; }
+    }
+
     private Task<T> InvokeOnUiThreadAsync<T>(Func<T> callback)
     {
         var dispatcherQueue = _dispatcherQueue;
@@ -845,42 +880,94 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
 
     private static object? FindFirstDescendantOfType(object? root, Type targetType)
     {
+        return EnumerateDescendants(root, targetType).FirstOrDefault();
+    }
+
+    private static IEnumerable<object> EnumerateWebView2Descendants(object? root, Type webView2Type)
+    {
+        return EnumerateDescendants(root, webView2Type);
+    }
+
+    /// <summary>
+    /// Enumerates descendants of <paramref name="root"/> matching <paramref name="targetType"/>, traversing
+    /// both the visual tree (VisualTreeHelper) and the logical tree (Content / Items / Children) so that
+    /// elements inside Frames, ContentControls, and ItemsControls are reachable even before the visual
+    /// tree has finished realizing them.
+    /// </summary>
+    private static IEnumerable<object> EnumerateDescendants(object? root, Type targetType)
+    {
         if (root == null)
-            return null;
-
-        if (targetType.IsInstanceOfType(root))
-            return root;
-
-        var queue = new Queue<object>();
-        queue.Enqueue(root);
+            yield break;
 
         var visualTreeHelperType = FindType(
             "Microsoft.UI.Xaml.Media.VisualTreeHelper",
             "Windows.UI.Xaml.Media.VisualTreeHelper");
         var getChildrenCount = visualTreeHelperType?.GetMethod("GetChildrenCount", BindingFlags.Public | BindingFlags.Static);
         var getChild = visualTreeHelperType?.GetMethod("GetChild", BindingFlags.Public | BindingFlags.Static);
-        if (getChildrenCount == null || getChild == null)
-            return null;
+
+        var queue = new Queue<object>();
+        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        queue.Enqueue(root);
+        visited.Add(root);
 
         while (queue.Count > 0)
         {
             var current = queue.Dequeue();
             if (targetType.IsInstanceOfType(current))
-                return current;
+                yield return current;
 
-            var countValue = getChildrenCount.Invoke(null, [current]);
-            if (countValue is not int count || count <= 0)
-                continue;
-
-            for (var i = 0; i < count; i++)
+            // 1) Visual-tree children (works once layout has realized children).
+            if (getChildrenCount != null && getChild != null)
             {
-                var child = getChild.Invoke(null, [current, i]);
-                if (child != null)
-                    queue.Enqueue(child);
-            }
-        }
+                int count = 0;
+                try { count = (int?)getChildrenCount.Invoke(null, [current]) ?? 0; }
+                catch { count = 0; }
 
-        return null;
+                for (var i = 0; i < count; i++)
+                {
+                    object? child = null;
+                    try { child = getChild.Invoke(null, [current, i]); }
+                    catch { /* swallow per-element errors */ }
+                    if (child != null && visited.Add(child))
+                        queue.Enqueue(child);
+                }
+            }
+
+            // 2) Logical children that VisualTreeHelper does not expose
+            //    (Frame.Content, ContentControl.Content, ItemsControl.Items, Panel.Children).
+            EnqueueLogicalChild(queue, visited, current, "Content");
+            EnqueueLogicalChild(queue, visited, current, "Child");
+            EnqueueLogicalChildren(queue, visited, current, "Items");
+            EnqueueLogicalChildren(queue, visited, current, "Children");
+        }
+    }
+
+    private static void EnqueueLogicalChild(Queue<object> queue, HashSet<object> visited, object current, string propertyName)
+    {
+        object? value = null;
+        try { value = GetPropertyValue(current, propertyName); }
+        catch { return; }
+
+        if (value == null || value is string)
+            return;
+        if (visited.Add(value))
+            queue.Enqueue(value);
+    }
+
+    private static void EnqueueLogicalChildren(Queue<object> queue, HashSet<object> visited, object current, string propertyName)
+    {
+        object? value = null;
+        try { value = GetPropertyValue(current, propertyName); }
+        catch { return; }
+
+        if (value is not IEnumerable enumerable || value is string)
+            return;
+
+        foreach (var item in enumerable)
+        {
+            if (item != null && visited.Add(item))
+                queue.Enqueue(item);
+        }
     }
 
     private object? SendWebViewCdpCommandOnUiThread(string? contextId, string method, JsonElement? @params)
@@ -889,35 +976,14 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         if (webView2Type == null)
             return new { error = "WebView2 type not found on this Uno target." };
 
-        var root = GetRootVisual();
-        var webViews = new List<object>();
-        var queue = new Queue<object>();
-        if (root != null) queue.Enqueue(root);
-        while (queue.Count > 0)
-        {
-            var current = queue.Dequeue();
-            if (webView2Type.IsInstanceOfType(current))
-                webViews.Add(current);
-
-            var visualTreeHelperType = FindType("Microsoft.UI.Xaml.Media.VisualTreeHelper", "Windows.UI.Xaml.Media.VisualTreeHelper");
-            var getChildrenCount = visualTreeHelperType?.GetMethod("GetChildrenCount", BindingFlags.Public | BindingFlags.Static);
-            var getChild = visualTreeHelperType?.GetMethod("GetChild", BindingFlags.Public | BindingFlags.Static);
-            if (getChildrenCount == null || getChild == null)
-                continue;
-            var count = (int?)getChildrenCount.Invoke(null, new[] { current }) ?? 0;
-            for (var i = 0; i < count; i++)
-            {
-                var child = getChild.Invoke(null, new object[] { current, i });
-                if (child != null) queue.Enqueue(child);
-            }
-        }
+        var webViews = EnumerateWebView2Descendants(GetRootVisual(), webView2Type).ToList();
 
         object? target = webViews.FirstOrDefault();
         if (!string.IsNullOrWhiteSpace(contextId))
         {
             target = webViews.FirstOrDefault(w =>
-                string.Equals(GetPropertyValue(w, "Name")?.ToString(), contextId, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(GetPropertyValue(w, "AutomationId")?.ToString(), contextId, StringComparison.OrdinalIgnoreCase));
+                string.Equals(SafeGetPropertyString(w, "Name"), contextId, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(SafeGetPropertyString(w, "AutomationId"), contextId, StringComparison.OrdinalIgnoreCase));
         }
 
         if (target == null)
@@ -937,8 +1003,8 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
             if (executeScript == null)
                 return new { error = "ExecuteScriptAsync not found on CoreWebView2." };
 
-            var task = executeScript.Invoke(core, new object[] { expression }) as Task<string>;
-            var scriptResult = task?.GetAwaiter().GetResult();
+            var raw = executeScript.Invoke(core, new object[] { expression });
+            var scriptResult = AwaitStringResult(raw);
             return new { result = new { value = scriptResult } };
         }
 
@@ -1047,6 +1113,96 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         }
 
         return [root];
+    }
+
+    private static string? AwaitStringResult(object? operation)
+    {
+        if (operation == null)
+            return null;
+
+        try
+        {
+            // CoreWebView2.ExecuteScriptAsync returns Task<string> on WPF/WinForms WebView2,
+            // but IAsyncOperation<string> on WinAppSDK / Uno's Microsoft.UI.Xaml.Controls.WebView2.
+            // For IAsyncOperation<T>, polling Status + calling GetResults() returns null because
+            // WinRT requires consuming the operation via its awaiter/AsTask which sets the result
+            // through a Completed handler. We use AsTask() via the WindowsRuntimeSystemExtensions.
+            if (operation is Task plainTask)
+            {
+                plainTask.GetAwaiter().GetResult();
+                var resultProp = plainTask.GetType().GetProperty("Result", BindingFlags.Public | BindingFlags.Instance);
+                return resultProp?.GetValue(plainTask)?.ToString();
+            }
+
+            // Try Windows-Runtime IAsyncOperation<T> -> Task<T> via AsTask extension.
+            var asTaskMethod = FindAsTaskMethod(operation.GetType());
+            if (asTaskMethod != null)
+            {
+                var task = asTaskMethod.Invoke(null, new[] { operation }) as Task;
+                if (task != null)
+                {
+                    task.GetAwaiter().GetResult();
+                    var resultProp = task.GetType().GetProperty("Result", BindingFlags.Public | BindingFlags.Instance);
+                    return resultProp?.GetValue(task)?.ToString();
+                }
+            }
+
+            // Fallback: poll Status, then GetResults — works for some non-WinRT awaitables.
+            var statusProperty = operation.GetType().GetProperty("Status", BindingFlags.Public | BindingFlags.Instance);
+            if (statusProperty != null)
+            {
+                var deadline = Environment.TickCount64 + 10_000;
+                while (Environment.TickCount64 < deadline)
+                {
+                    var status = statusProperty.GetValue(operation)?.ToString();
+                    if (string.Equals(status, "Completed", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(status, "Canceled", StringComparison.OrdinalIgnoreCase))
+                    {
+                        break;
+                    }
+                    Thread.Sleep(10);
+                }
+                var getResults = operation.GetType().GetMethod("GetResults", BindingFlags.Public | BindingFlags.Instance);
+                return getResults?.Invoke(operation, null)?.ToString();
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static MethodInfo? FindAsTaskMethod(Type operationType)
+    {
+        // System.WindowsRuntimeSystemExtensions.AsTask(IAsyncOperation<TResult>) — generic.
+        var extensionsType = FindType("System.WindowsRuntimeSystemExtensions");
+        if (extensionsType == null)
+            return null;
+
+        // Find AsTask methods with a single parameter, then pick the IAsyncOperation<T> overload.
+        var candidates = extensionsType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Where(m => m.Name == "AsTask" && m.IsGenericMethodDefinition && m.GetParameters().Length == 1)
+            .ToList();
+
+        // Resolve the TResult type argument from the operation's IAsyncOperation<T> interface.
+        var asyncOperationType = operationType.GetInterfaces()
+            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition().FullName == "Windows.Foundation.IAsyncOperation`1");
+        if (asyncOperationType == null)
+            return null;
+
+        var resultType = asyncOperationType.GetGenericArguments()[0];
+        foreach (var candidate in candidates)
+        {
+            var paramType = candidate.GetParameters()[0].ParameterType;
+            if (paramType.IsGenericType && paramType.GetGenericTypeDefinition().Name.StartsWith("IAsyncOperation", StringComparison.Ordinal))
+            {
+                return candidate.MakeGenericMethod(resultType);
+            }
+        }
+        return null;
     }
 
     private static async Task<object?> AwaitAsync(object? operation)
