@@ -1,8 +1,8 @@
-# WPF Labs
+# UI Labs
 
-Here contains the WPF DevFlow proof-of-concept and supporting tooling for the WPF tooling research project. Experiments on other UI frameworks like WinForms, WinUI 3, Uno Platform, and MewUI are also included here for comparison and validation purposes.
+Initially this repo contains the CLI/DevFlow proof-of-concept and supporting tooling for the WPF tooling research project. Now experiments on other UI frameworks like WinForms, WinUI 3, Uno Platform, and MewUI are also included for comparison and validation purposes.
 
-This project is not affiliated with, endorsed by, or sponsored by Microsoft.
+This project is not affiliated with, endorsed by, or sponsored by Microsoft, or other vendors of the frameworks.
 
 ## NuGet packages
 
@@ -19,28 +19,25 @@ This project is not affiliated with, endorsed by, or sponsored by Microsoft.
 
 - `src/DevFlow/`
   - `LeXtudio.DevFlow.Agent.Core/` — shared DevFlow core service layer.
-  - `LeXtudio.DevFlow.Agent.WPF/` — plain WPF runtime implementation for DevFlow.
-  - `LeXtudio.DevFlow.Agent.WPF.Tests/` — integration tests covering DevFlow status, tree, screenshot, tap, and scroll behavior.
-  - `WpfDevFlowTestApp/` — a small WPF sample app instrumented with DevFlow for runtime validation.
-  - `LeXtudio.DevFlow.Agent.WinForms/` — WinForms runtime implementation for DevFlow.
-  - `LeXtudio.DevFlow.Agent.WinForms.Tests/` — integration tests covering WinForms DevFlow status, tree, screenshot, actions, and error behavior.
-  - `WinFormsDevFlowTestApp/` — a small WinForms sample app instrumented with DevFlow for runtime validation.
-- `src/Cli/` — global tool prototypes for scaffolding and project workflows, including `LeXtudio.Wpf.Cli` and `LeXtudio.WinForms.Cli`.
-- `docs/devflow/` — plan and session documentation for the DevFlow work.
+  - `LeXtudio.DevFlow.Agent.XXX/` — plain runtime implementation for DevFlow for XXX UI framework.
+  - `LeXtudio.DevFlow.Agent.XXX.Tests/` — integration tests covering DevFlow status, tree, screenshot, tap, and scroll behavior.
+  - `XXXDevFlowTestApp/` — a small sample app instrumented with DevFlow for runtime validation for XXX UI framework.
+- `src/Cli/` — global tool prototypes for scaffolding and project workflows.
+- `docs/` — plan and session documentation for the CLI/DevFlow work.
 
 ## Key goals
 
-- Build DevFlow agents that expose runtime UI state for WPF, WinForms, WinUI 3, and Uno Platform apps via HTTP.
+- Build DevFlow agents that expose runtime UI state for WinForms, WPF, WinUI 3, Uno Platform, and MewUI apps via HTTP.
 - Reuse shared DevFlow infrastructure where it makes sense, while keeping platform code in focused runtime packages.
 - Validate the approach with an end-to-end integration test and a live sample app.
 
-## How to use DevFlow with WPF/WinForms/WinUI 3/Uno Platform
+## How to use DevFlow with WPF/WinForms/WinUI 3/Uno Platform/MewUI
 
 ### Build all relevant projects
 
 ```powershell
-cd src\DevFlow
-dotnet build WpfDevFlow.sln
+cd src
+dotnet build labs.slnx
 ```
 
 ### Run the WPF sample app
@@ -58,15 +55,6 @@ The sample app starts DevFlow on port `9223` and exposes:
 - `GET http://localhost:9223/api/v1/ui/screenshot`
 - `POST http://localhost:9223/api/v1/ui/tap`
 - `POST http://localhost:9223/api/v1/ui/actions/scroll`
-
-### Run the WinForms sample app
-
-```powershell
-cd src\DevFlow\WinFormsDevFlowTestApp
-dotnet run --no-build
-```
-
-The sample app starts DevFlow on port `9223` by default and exposes the same shared DevFlow HTTP API used by the other runtime agents.
 
 ### Run the WinUI 3/Uno Platform sample app
 
@@ -93,6 +81,24 @@ cd src\DevFlow\UnoDevFlowTestApp
 dotnet run -f net10.0-windows10.0.19041.0 --no-build
 ```
 
+### Run the WinForms sample app
+
+```powershell
+cd src\DevFlow\WinFormsDevFlowTestApp
+dotnet run --no-build
+```
+
+The sample app starts DevFlow on port `9223` by default and exposes the same shared DevFlow HTTP API used by the other runtime agents.
+
+### Run the MewUI sample app
+
+```powershell
+cd src\DevFlow\MewUIDevFlowTestApp
+dotnet run --no-build
+```
+
+The sample app starts DevFlow on port `9223` by default and exposes the same shared DevFlow HTTP API used by the other runtime agents.
+
 ### Run WPF integration tests
 
 ```powershell
@@ -114,6 +120,13 @@ cd src\DevFlow\LeXtudio.DevFlow.Agent.WinForms.Tests
 dotnet test --project LeXtudio.DevFlow.Agent.WinForms.Tests.csproj
 ```
 
+### Run MewUI integration tests
+
+```powershell
+cd src\DevFlow\LeXtudio.DevFlow.Agent.MewUI.Tests
+dotnet test --project LeXtudio.DevFlow.Agent.MewUI.Tests.csproj
+```
+
 ## Use in your projects
 
 You can use prebuilt NuGet packages
@@ -125,6 +138,13 @@ dotnet add package LeXtudio.DevFlow.Agent.WPF
 dotnet add package LeXtudio.DevFlow.Driver
 ```
 
+### Install packages to a WinUI 3/Uno Platform project
+
+```powershell
+dotnet add package LeXtudio.DevFlow.Agent.Uno
+dotnet add package LeXtudio.DevFlow.Driver
+```
+
 ### Install packages to a WinForms project
 
 ```powershell
@@ -132,10 +152,10 @@ dotnet add package LeXtudio.DevFlow.Agent.WinForms
 dotnet add package LeXtudio.DevFlow.Driver
 ```
 
-### Install packages to a WinUI 3/Uno Platform project
+### Install packages to a MewUI project
 
 ```powershell
-dotnet add package LeXtudio.DevFlow.Agent.Uno
+dotnet add package LeXtudio.DevFlow.Agent.MewUI
 dotnet add package LeXtudio.DevFlow.Driver
 ```
 
@@ -144,6 +164,13 @@ dotnet add package LeXtudio.DevFlow.Driver
 ```powershell
 dotnet tool install -g LeXtudio.Wpf.Cli
 dotnet wpflex --help
+```
+
+## Install WinUI 3/Uno Platform CLI tool
+
+```powershell
+dotnet tool install -g LeXtudio.Uno.Cli
+dotnet unolex --help
 ```
 
 ## Install WinForms CLI tool
@@ -170,10 +197,6 @@ dotnet mewlex --help
 
 MIT
 
-## Affiliation
-
-
-
 ## Copyright
 
-(c) 2026 LeXtudio Inc.
+(c) 2026 LeXtudio Inc. All rights reserved.
