@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -372,7 +373,11 @@ public class UnoAgentIntegrationTests
 
         try
         {
-            using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+            using var client = new HttpClient
+            {
+                BaseAddress = new Uri($"http://localhost:{port}"),
+                Timeout = TimeSpan.FromMinutes(3)
+            };
             await PollAgentStatusAsync(client, TimeSpan.FromSeconds(20));
 
             // Wait until /webview/contexts reports the WebView2 (CoreWebView2 may take time to init).
@@ -403,17 +408,56 @@ public class UnoAgentIntegrationTests
                 method = "Runtime.evaluate",
                 @params = new { expression = "1+1" }
             });
-            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
-            using var response = await PostAsync(client, "/api/v1/webview/cdp", content);
-            Assert.True(response.IsSuccessStatusCode, $"CDP HTTP failed: {(int)response.StatusCode}");
-            var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-            using var doc = JsonDocument.Parse(json);
-            Assert.False(doc.RootElement.TryGetProperty("error", out _),
-                $"CDP returned an error field; pipeline still broken: {json}");
-            Assert.True(doc.RootElement.TryGetProperty("result", out var result),
-                $"CDP response missing 'result' field: {json}");
-            Assert.True(result.TryGetProperty("value", out _),
-                $"CDP result missing 'value' field: {json}");
+            HttpResponseMessage? response = null;
+            Exception? lastException = null;
+            var attemptCount = 0;
+            var cdpDeadline = DateTime.UtcNow + TimeSpan.FromSeconds(120);
+            while (DateTime.UtcNow < cdpDeadline)
+            {
+                attemptCount++;
+                try
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/webview/cdp")
+                    {
+                        Content = new StringContent(payload, Encoding.UTF8, "application/json")
+                    };
+                    using var perAttemptCts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+                    perAttemptCts.CancelAfter(TimeSpan.FromSeconds(10));
+                    response = await client.SendAsync(request, perAttemptCts.Token);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        break;
+                    }
+
+                    response.Dispose();
+                    response = null;
+                }
+                catch (OperationCanceledException ex) when (!TestContext.Current.CancellationToken.IsCancellationRequested)
+                {
+                    lastException = ex;
+                }
+                catch (HttpRequestException ex)
+                {
+                    lastException = ex;
+                }
+
+                await Delay(500);
+            }
+
+            Assert.True(response is not null,
+                $"CDP endpoint never returned success within retry window. Attempts={attemptCount}. LastException={lastException?.GetType().Name}: {lastException?.Message}");
+            using (response)
+            {
+                Assert.True(response.IsSuccessStatusCode, $"CDP HTTP failed: {(int)response.StatusCode}");
+                var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+                using var doc = JsonDocument.Parse(json);
+                Assert.False(doc.RootElement.TryGetProperty("error", out _),
+                    $"CDP returned an error field; pipeline still broken: {json}");
+                Assert.True(doc.RootElement.TryGetProperty("result", out var result),
+                    $"CDP response missing 'result' field: {json}");
+                Assert.True(result.TryGetProperty("value", out _),
+                    $"CDP result missing 'value' field: {json}");
+            }
         }
         finally
         {
@@ -1333,4 +1377,3 @@ public class UnoAgentIntegrationTests
     private static Task<byte[]> ReadAsByteArrayAsync(HttpContent content) => content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
     private static Task Delay(int millisecondsTimeout) => Task.Delay(millisecondsTimeout, TestContext.Current.CancellationToken);
 }
-

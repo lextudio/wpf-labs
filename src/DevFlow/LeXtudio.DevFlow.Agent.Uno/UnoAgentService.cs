@@ -570,7 +570,7 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
 
     protected override Task<object?> SendWebViewCdpCommandAsync(string? contextId, string method, JsonElement? @params)
     {
-        return InvokeOnUiThreadAsync(() => SendWebViewCdpCommandOnUiThread(contextId, method, @params));
+        return InvokeOnUiThreadAsync(() => SendWebViewCdpCommandOnUiThreadAsync(contextId, method, @params));
     }
 
     protected override Task<object?> GetWebViewContextsAsync()
@@ -970,7 +970,7 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         }
     }
 
-    private object? SendWebViewCdpCommandOnUiThread(string? contextId, string method, JsonElement? @params)
+    private async Task<object?> SendWebViewCdpCommandOnUiThreadAsync(string? contextId, string method, JsonElement? @params)
     {
         var webView2Type = FindType("Microsoft.UI.Xaml.Controls.WebView2");
         if (webView2Type == null)
@@ -1004,7 +1004,7 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
                 return new { error = "ExecuteScriptAsync not found on CoreWebView2." };
 
             var raw = executeScript.Invoke(core, new object[] { expression });
-            var scriptResult = AwaitStringResult(raw);
+            var scriptResult = await AwaitStringResultAsync(raw).ConfigureAwait(false);
             return new { result = new { value = scriptResult } };
         }
 
@@ -1115,7 +1115,7 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         return [root];
     }
 
-    private static string? AwaitStringResult(object? operation)
+    private static async Task<string?> AwaitStringResultAsync(object? operation)
     {
         if (operation == null)
             return null;
@@ -1129,7 +1129,7 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
             // through a Completed handler. We use AsTask() via the WindowsRuntimeSystemExtensions.
             if (operation is Task plainTask)
             {
-                plainTask.GetAwaiter().GetResult();
+                await plainTask.ConfigureAwait(false);
                 var resultProp = plainTask.GetType().GetProperty("Result", BindingFlags.Public | BindingFlags.Instance);
                 return resultProp?.GetValue(plainTask)?.ToString();
             }
@@ -1141,33 +1141,15 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
                 var task = asTaskMethod.Invoke(null, new[] { operation }) as Task;
                 if (task != null)
                 {
-                    task.GetAwaiter().GetResult();
+                    await task.ConfigureAwait(false);
                     var resultProp = task.GetType().GetProperty("Result", BindingFlags.Public | BindingFlags.Instance);
                     return resultProp?.GetValue(task)?.ToString();
                 }
             }
 
-            // Fallback: poll Status, then GetResults — works for some non-WinRT awaitables.
-            var statusProperty = operation.GetType().GetProperty("Status", BindingFlags.Public | BindingFlags.Instance);
-            if (statusProperty != null)
-            {
-                var deadline = Environment.TickCount64 + 10_000;
-                while (Environment.TickCount64 < deadline)
-                {
-                    var status = statusProperty.GetValue(operation)?.ToString();
-                    if (string.Equals(status, "Completed", StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(status, "Canceled", StringComparison.OrdinalIgnoreCase))
-                    {
-                        break;
-                    }
-                    Thread.Sleep(10);
-                }
-                var getResults = operation.GetType().GetMethod("GetResults", BindingFlags.Public | BindingFlags.Instance);
-                return getResults?.Invoke(operation, null)?.ToString();
-            }
-
-            return null;
+            // Fallback for non-Task awaitables.
+            var awaited = await AwaitAsync(operation).ConfigureAwait(false);
+            return awaited?.ToString();
         }
         catch
         {
@@ -1451,8 +1433,8 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
                     args[0] = ConvertToParameterType(horizontalOffset, parameters[0].ParameterType);
                     args[1] = ConvertToParameterType(verticalOffset, parameters[1].ParameterType);
                     args[2] = null;
-                    method.Invoke(target, args);
-                    return true;
+                    if (IsSuccessfulScrollInvocation(method.Invoke(target, args)))
+                        return true;
                 }
                 catch
                 {
@@ -1467,8 +1449,8 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
                     args[1] = ConvertToParameterType(verticalOffset, parameters[1].ParameterType);
                     args[2] = null;
                     args[3] = ConvertToParameterType(true, parameters[3].ParameterType);
-                    method.Invoke(target, args);
-                    return true;
+                    if (IsSuccessfulScrollInvocation(method.Invoke(target, args)))
+                        return true;
                 }
                 catch
                 {
@@ -1477,6 +1459,11 @@ public sealed class UnoAgentService : DevFlowAgentServiceBase
         }
 
         return false;
+    }
+
+    private static bool IsSuccessfulScrollInvocation(object? result)
+    {
+        return result is not bool succeeded || succeeded;
     }
 
     private static bool TryInvokeMethod(object target, string methodName, double value)
