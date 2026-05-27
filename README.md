@@ -10,9 +10,11 @@ This project is not affiliated with, endorsed by, or sponsored by Microsoft, or 
 - [![LeXtudio.DevFlow.Agent.WPF](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.WPF.svg?label=LeXtudio.DevFlow.Agent.WPF)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.WPF)
 - [![LeXtudio.DevFlow.Agent.WinForms](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.WinForms.svg?label=LeXtudio.DevFlow.Agent.WinForms)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.WinForms)
 - [![LeXtudio.DevFlow.Agent.Uno](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.Uno.svg?label=LeXtudio.DevFlow.Agent.Uno)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.Uno)
+- [![LeXtudio.DevFlow.Agent.MewUI](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Agent.MewUI.svg?label=LeXtudio.DevFlow.Agent.MewUI)](https://www.nuget.org/packages/LeXtudio.DevFlow.Agent.MewUI)
 - [![LeXtudio.DevFlow.Driver](https://img.shields.io/nuget/v/LeXtudio.DevFlow.Driver.svg?label=LeXtudio.DevFlow.Driver)](https://www.nuget.org/packages/LeXtudio.DevFlow.Driver)
 - [![LeXtudio.Wpf.Cli](https://img.shields.io/nuget/v/LeXtudio.Wpf.Cli.svg?label=LeXtudio.Wpf.Cli)](https://www.nuget.org/packages/LeXtudio.Wpf.Cli)
 - [![LeXtudio.WinForms.Cli](https://img.shields.io/nuget/v/LeXtudio.WinForms.Cli.svg?label=LeXtudio.WinForms.Cli)](https://www.nuget.org/packages/LeXtudio.WinForms.Cli)
+- [![LeXtudio.Uno.Cli](https://img.shields.io/nuget/v/LeXtudio.Uno.Cli.svg?label=LeXtudio.Uno.Cli)](https://www.nuget.org/packages/LeXtudio.Uno.Cli)
 - [![LeXtudio.MewUI.Cli](https://img.shields.io/nuget/v/LeXtudio.MewUI.Cli.svg?label=LeXtudio.MewUI.Cli)](https://www.nuget.org/packages/LeXtudio.MewUI.Cli)
 
 ## Workspace structure
