@@ -39,6 +39,7 @@ jobs:
           dotnet restore src/Cli/src/LeXtudio.WinForms.Cli.UnitTests/LeXtudio.WinForms.Cli.UnitTests.csproj
           dotnet restore src/Cli/src/LeXtudio.MewUI.Cli.UnitTests/LeXtudio.MewUI.Cli.UnitTests.csproj
           dotnet restore src/Cli/src/LeXtudio.Uno.Cli.UnitTests/LeXtudio.Uno.Cli.UnitTests.csproj
+          dotnet restore src/Cli/src/LeXtudio.Jalium.Cli.UnitTests/LeXtudio.Jalium.Cli.UnitTests.csproj
 
       - name: Restore WPF agent tests
         run: dotnet restore src/DevFlow/LeXtudio.DevFlow.Agent.WPF.Tests/LeXtudio.DevFlow.Agent.WPF.Tests.csproj
@@ -52,6 +53,9 @@ jobs:
       - name: Restore MewUI agent tests
         run: dotnet restore src/DevFlow/LeXtudio.DevFlow.Agent.MewUI.Tests/LeXtudio.DevFlow.Agent.MewUI.Tests.csproj
 
+      - name: Restore Jalium agent tests
+        run: dotnet restore src/DevFlow/LeXtudio.DevFlow.Agent.Jalium.Tests/LeXtudio.DevFlow.Agent.Jalium.Tests.csproj
+
       - name: Run Uno agent tests
         run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.Uno.Tests/LeXtudio.DevFlow.Agent.Uno.Tests.csproj --configuration Release --no-restore
 
@@ -64,12 +68,16 @@ jobs:
       - name: Run WinForms agent tests
         run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.WinForms.Tests/LeXtudio.DevFlow.Agent.WinForms.Tests.csproj --configuration Release --no-restore
 
+      - name: Run Jalium agent tests
+        run: dotnet test src/DevFlow/LeXtudio.DevFlow.Agent.Jalium.Tests/LeXtudio.DevFlow.Agent.Jalium.Tests.csproj --configuration Release --no-restore
+
       - name: Run CLI unit tests
         run: |
           dotnet test src/Cli/src/LeXtudio.Wpf.Cli.UnitTests/LeXtudio.Wpf.Cli.UnitTests.csproj --configuration Release --no-restore
           dotnet test src/Cli/src/LeXtudio.WinForms.Cli.UnitTests/LeXtudio.WinForms.Cli.UnitTests.csproj --configuration Release --no-restore
           dotnet test src/Cli/src/LeXtudio.MewUI.Cli.UnitTests/LeXtudio.MewUI.Cli.UnitTests.csproj --configuration Release --no-restore
           dotnet test src/Cli/src/LeXtudio.Uno.Cli.UnitTests/LeXtudio.Uno.Cli.UnitTests.csproj --configuration Release --no-restore
+          dotnet test src/Cli/src/LeXtudio.Jalium.Cli.UnitTests/LeXtudio.Jalium.Cli.UnitTests.csproj --configuration Release --no-restore
 
   uno:
     name: Uno tests

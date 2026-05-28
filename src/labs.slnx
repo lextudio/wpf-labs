@@ -8,6 +8,8 @@
     <Project Path="Cli/src/LeXtudio.Uno.Cli.UnitTests/LeXtudio.Uno.Cli.UnitTests.csproj" />
     <Project Path="Cli/src/LeXtudio.WinForms.Cli/LeXtudio.WinForms.Cli.csproj" />
     <Project Path="Cli/src/LeXtudio.WinForms.Cli.UnitTests/LeXtudio.WinForms.Cli.UnitTests.csproj" />
+    <Project Path="Cli/src/LeXtudio.Jalium.Cli/LeXtudio.Jalium.Cli.csproj" />
+    <Project Path="Cli/src/LeXtudio.Jalium.Cli.UnitTests/LeXtudio.Jalium.Cli.UnitTests.csproj" />
   </Folder>
   <Folder Name="/DevFlow/">
     <Project Path="DevFlow/LeXtudio.DevFlow.Driver/LeXtudio.DevFlow.Driver.csproj" />
@@ -18,5 +20,8 @@
     <Project Path="DevFlow/LeXtudio.DevFlow.Agent.WinForms/LeXtudio.DevFlow.Agent.WinForms.csproj" />
     <Project Path="DevFlow/LeXtudio.DevFlow.Agent.WinForms.Tests/LeXtudio.DevFlow.Agent.WinForms.Tests.csproj" />
     <Project Path="DevFlow/WinFormsDevFlowTestApp/WinFormsDevFlowTestApp.csproj" />
+    <Project Path="DevFlow/LeXtudio.DevFlow.Agent.Jalium/LeXtudio.DevFlow.Agent.Jalium.csproj" />
+    <Project Path="DevFlow/LeXtudio.DevFlow.Agent.Jalium.Tests/LeXtudio.DevFlow.Agent.Jalium.Tests.csproj" />
+    <Project Path="DevFlow/JaliumDevFlowTestApp/JaliumDevFlowTestApp.csproj" />
   </Folder>
 </Solution>

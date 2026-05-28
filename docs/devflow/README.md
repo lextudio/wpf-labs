@@ -9,6 +9,7 @@ Choose the guide that matches your application framework:
 - **[WPF Guide](howto-wpf.md)** — Add DevFlow to an existing WPF application
 - **[Uno Platform / WinUI 3 Guide](howto-uno.md)** — Add DevFlow to an Uno or pure WinUI 3 project
 - **[MewUI Guide](howto-mewui.md)** — Add DevFlow to a MewUI application
+- **[Jalium Guide](howto-jalium.md)** — Add DevFlow to a Jalium application
 
 Each guide covers:
 - Prerequisites
@@ -65,6 +66,9 @@ Application.Current.AddUnoDevFlowAgent(new AgentOptions { Port = 9500 });
 
 // MewUI
 Application.Current.AddMewUIDevFlowAgent(new AgentOptions { Port = 9500 });
+
+// Jalium
+app.AddJaliumDevFlowAgent(new AgentOptions { Port = 9500 });
 ```
 
 ## Related Packages
@@ -73,6 +77,7 @@ Application.Current.AddMewUIDevFlowAgent(new AgentOptions { Port = 9500 });
 - `LeXtudio.DevFlow.Agent.WPF` — WPF integration
 - `LeXtudio.DevFlow.Agent.Uno` — Uno Platform and WinUI 3 integration
 - `LeXtudio.DevFlow.Agent.MewUI` — MewUI integration
+- `LeXtudio.DevFlow.Agent.Jalium` — Jalium integration
 - `LeXtudio.DevFlow.Driver` — HTTP client for querying a DevFlow agent
 
 See [the main DevFlow README](../src/DevFlow/README.md) for more information about packages and architecture.

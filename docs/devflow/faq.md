@@ -38,6 +38,13 @@ using LeXtudio.DevFlow.Agent.MewUI;
 Application.Current.AddMewUIDevFlowAgent(new AgentOptions { Port = 9500 });
 ```
 
+**Jalium:**
+```csharp
+using LeXtudio.DevFlow.Agent.Jalium;
+
+app.AddJaliumDevFlowAgent(new AgentOptions { Port = 9500 });
+```
+
 ### Q: How do I override the port with an environment variable?
 
 If your app reads `DEVFLOW_AGENT_PORT` at startup and passes it to the agent, you can override the port:
@@ -128,8 +135,13 @@ Yes. Each application instance can run on a different port by:
 
 For example, in a multi-app test scenario:
 ```csharp
+// WPF
 app1.AddWpfDevFlowAgent(new AgentOptions { Port = 9223 });
 app2.AddWpfDevFlowAgent(new AgentOptions { Port = 9224 });
+
+// Jalium
+app1.AddJaliumDevFlowAgent(new AgentOptions { Port = 9223 });
+app2.AddJaliumDevFlowAgent(new AgentOptions { Port = 9224 });
 ```
 
 Or with environment variables:
