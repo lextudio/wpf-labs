@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Jalium.UI.Controls" Version="26.10.4" />
+    <PackageVersion Include="Jalium.UI.Desktop" Version="26.10.4" />
     <!-- Pin patched Tmds.DBus.Protocol to avoid GHSA-xrw6-gwf8-vvr9 (CVE-2026-39959) -->
     <PackageVersion Include="Tmds.DBus.Protocol" Version="0.92.0" />
     <PackageVersion Include="UnoEdit" Version="0.1.1-master.1+5" />

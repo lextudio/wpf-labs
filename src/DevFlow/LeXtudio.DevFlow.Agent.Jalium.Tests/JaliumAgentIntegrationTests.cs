@@ -176,7 +176,7 @@ public class JaliumAgentIntegrationTests
         if (!RunCommand("dotnet", $"build \"{hostProjectPath}\" -c Debug -r {rid}", hostProjectDirectory, out var buildOutput, out var buildError))
             throw new InvalidOperationException($"Failed to build Jalium host project:\n{buildError}\n{buildOutput}");
 
-        var outputPath = Path.Combine(hostProjectDirectory, "bin", "Debug", "net10.0", rid);
+        var outputPath = Path.Combine(hostProjectDirectory, "bin", "Debug", "net10.0-windows", rid);
         var exePath = Path.Combine(outputPath, "JaliumDevFlowTestApp.exe");
 
         if (!File.Exists(exePath))
